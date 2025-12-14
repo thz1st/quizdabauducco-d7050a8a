@@ -371,13 +371,11 @@ const StorePage = ({ onCheckout, onRestartQuiz }: StorePageProps) => {
 
         {/* Company Info */}
         <div className="text-center border-t border-border/30 pt-6">
-          <p className="text-muted-foreground text-[10px] leading-relaxed max-w-2xl mx-auto">
-            Bauducco & Cia Ltda. CNPJ: 61.125.821/0001-90<br />
-            Rua Jorge Araújo, 201 - Guarulhos/SP - CEP: 07040-000<br />
-            SAC: 0800 770 8855 | atendimento@bauducco.com.br
-          </p>
-          <p className="text-muted-foreground/60 text-[9px] mt-4">
+          <p className="text-muted-foreground/60 text-[10px] mt-2">
             © 2025 Bauducco. Todos os direitos reservados.
+          </p>
+          <p className="text-muted-foreground text-[10px] mt-2">
+            CNPJ: 49.033.004/0001-65 | Bauducco Indústria de Alimentos Ltda.
           </p>
         </div>
       </motion.footer>
