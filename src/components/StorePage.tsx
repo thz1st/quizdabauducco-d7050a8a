@@ -320,12 +320,12 @@ const ProductCard = ({ product, onBuy }: { product: Product; onBuy: () => void }
           </div>
           
           {/* Prices */}
-          <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-gold text-xl font-bold">
-              R$ {product.discountedPrice.toFixed(2).replace('.', ',')}
+          <div className="flex items-baseline gap-2 mb-3 flex-wrap">
+            <span className="text-gold text-lg sm:text-xl font-bold whitespace-nowrap">
+              R$&nbsp;{product.discountedPrice.toFixed(2).replace('.', ',')}
             </span>
-            <span className="text-muted-foreground text-sm line-through">
-              R$ {product.originalPrice.toFixed(2).replace('.', ',')}
+            <span className="text-muted-foreground text-xs sm:text-sm line-through whitespace-nowrap">
+              R$&nbsp;{product.originalPrice.toFixed(2).replace('.', ',')}
             </span>
           </div>
           
