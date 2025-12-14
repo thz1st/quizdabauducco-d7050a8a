@@ -14,6 +14,16 @@ import lataChocottone from '@/assets/lata-chocottone.webp';
 import cestaNatal from '@/assets/cesta-natal.webp';
 import chocoBrownie from '@/assets/choco-brownie.webp';
 import cookiesTradicional from '@/assets/cookies-tradicional.jpg';
+import biscoitoMorango from '@/assets/biscoito-morango.webp';
+import bellastella from '@/assets/bellastella.webp';
+import buongrano from '@/assets/buongrano.webp';
+import biscoitoNatalino from '@/assets/biscoito-natalino.webp';
+import biscoitoBaunilha from '@/assets/biscoito-baunilha.webp';
+import chocobiscuitMeioAmargo from '@/assets/chocobiscuit-meio-amargo.webp';
+import croissantChocolate from '@/assets/croissant-chocolate.webp';
+import palmier from '@/assets/palmier.webp';
+import recheadinhoBrigadeiro from '@/assets/recheadinho-brigadeiro.webp';
+import biscoitoChampanhe from '@/assets/biscoito-champanhe.png';
 import mariaSilvaImg from '@/assets/maria-silva.jpg';
 import joaoPedroImg from '@/assets/joao-pedro.jpg';
 import anaCarolinaImg from '@/assets/ana-carolina.jpg';
@@ -149,6 +159,116 @@ const products: Product[] = [
     reviews: 2341,
     image: cookiesTradicional,
     badge: "-45%"
+  },
+  {
+    id: 11,
+    name: "Biscoito Recheado Morango 140g",
+    description: "Biscoito sabor chocolate com recheio sabor morango",
+    originalPrice: 9.90,
+    discountedPrice: 0.99,
+    rating: 5,
+    reviews: 1823,
+    image: biscoitoMorango,
+    badge: "99% OFF"
+  },
+  {
+    id: 12,
+    name: "BellaStella Cacau & Avelã 320g",
+    description: "Biscoito doce com chocolate e avelã - Importado da Itália",
+    originalPrice: 49.90,
+    discountedPrice: 9.90,
+    rating: 5,
+    reviews: 654,
+    image: bellastella,
+    badge: "Novo"
+  },
+  {
+    id: 13,
+    name: "BuonGrano Leite & Ovos 320g",
+    description: "Biscoito doce com leite - Importado da Itália",
+    originalPrice: 49.90,
+    discountedPrice: 9.90,
+    rating: 5,
+    reviews: 543,
+    image: buongrano,
+    badge: "Novo"
+  },
+  {
+    id: 14,
+    name: "Biscoito de Natal 110g",
+    description: "Biscoito doce sabor leite com lascas sabor chocolate",
+    originalPrice: 29.90,
+    discountedPrice: 5.90,
+    rating: 5,
+    reviews: 892,
+    image: biscoitoNatalino,
+    badge: "Novo"
+  },
+  {
+    id: 15,
+    name: "Biscoito Recheado Baunilha 140g",
+    description: "Biscoito sabor chocolate com recheio sabor baunilha",
+    originalPrice: 9.90,
+    discountedPrice: 0.99,
+    rating: 5,
+    reviews: 1567,
+    image: biscoitoBaunilha,
+    badge: "99% OFF"
+  },
+  {
+    id: 16,
+    name: "Choco Biscuit Meio Amargo 80g",
+    description: "Biscoito e barra sabor chocolate meio amargo - Nº1 do Brasil",
+    originalPrice: 9.90,
+    discountedPrice: 0.99,
+    rating: 5,
+    reviews: 2134,
+    image: chocobiscuitMeioAmargo,
+    badge: "99% OFF"
+  },
+  {
+    id: 17,
+    name: "Pão Croissant Chocolate 45g",
+    description: "Croissant com recheio sabor chocolate - Fermentação Natural",
+    originalPrice: 29.90,
+    discountedPrice: 5.90,
+    rating: 5,
+    reviews: 743,
+    image: croissantChocolate,
+    badge: "Novo"
+  },
+  {
+    id: 18,
+    name: "Palmier Tradicional 100g",
+    description: "Biscoito de massa folhada tipo palmier com cobertura açucarada",
+    originalPrice: 19.90,
+    discountedPrice: 3.90,
+    rating: 5,
+    reviews: 1256,
+    image: palmier,
+    badge: "-80%"
+  },
+  {
+    id: 19,
+    name: "Recheadinho Brigadeiro 104g",
+    description: "Bolinho recheado sabor brigadeiro - Feito com leite",
+    originalPrice: 14.90,
+    discountedPrice: 2.90,
+    rating: 5,
+    reviews: 987,
+    image: recheadinhoBrigadeiro,
+    badge: "-81%"
+  },
+  {
+    id: 20,
+    name: "Biscoito Champanhe 150g",
+    description: "Biscoito champanhe com açúcar cristal - Ideal para receitas deliciosas",
+    originalPrice: 49.90,
+    discountedPrice: 24.90,
+    rating: 5,
+    reviews: 678,
+    image: biscoitoChampanhe,
+    badge: "-50%"
   },
 ];
 
