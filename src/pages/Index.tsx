@@ -34,7 +34,6 @@ const Index = () => {
       }
       return [...prev, { product, quantity: 1 }];
     });
-    setIsCartOpen(true);
     
     toast({
       title: "✅ Adicionado ao carrinho!",
