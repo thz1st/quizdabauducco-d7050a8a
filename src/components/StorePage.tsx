@@ -10,6 +10,9 @@ import chocottoneOvomaltine from '@/assets/chocottone-ovomaltine.jpg';
 import chocottoneTradicional from '@/assets/chocottone-tradicional.jpg';
 import panetoneFrutas from '@/assets/panetone-frutas.jpg';
 import miniPanetone from '@/assets/mini-panetone.jpg';
+import mariaSilvaImg from '@/assets/maria-silva.jpg';
+import joaoPedroImg from '@/assets/joao-pedro.jpg';
+import anaCarolinaImg from '@/assets/ana-carolina.jpg';
 
 interface StorePageProps {
   onCheckout: (product: Product) => void;
@@ -237,32 +240,61 @@ const StorePage = ({ onCheckout, onRestartQuiz }: StorePageProps) => {
 
       {/* Testimonials */}
       <motion.section
-        className="max-w-4xl mx-auto mt-16 mb-8"
+        className="max-w-5xl mx-auto mt-16 mb-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.6 }}
       >
-        <h2 className="font-display text-2xl text-center text-foreground mb-8">
+        <h2 className="font-display text-2xl md:text-3xl text-center text-foreground mb-8">
           O que nossos clientes dizem
         </h2>
         <div className="grid md:grid-cols-3 gap-4">
           {[
-            { name: "Maria Silva", text: "Produto incrível! Chegou rapidinho e o sabor é maravilhoso.", avatar: "MS" },
-            { name: "João Mello", text: "Melhor panetone que já comi! Virei fã da Bauducco.", avatar: "JM" },
-            { name: "Ana Carolina", text: "Presente perfeito para o Natal. Minha família adorou!", avatar: "AC" },
+            { 
+              name: "Maria Silva", 
+              location: "São Paulo",
+              text: "Produtos frescos e de qualidade! Chegou super rápido. Amei!", 
+              image: mariaSilvaImg 
+            },
+            { 
+              name: "João Pedro", 
+              location: "Rio de Janeiro",
+              text: "Melhor panetone que já comi. Minha família toda aprovou!", 
+              image: joaoPedroImg 
+            },
+            { 
+              name: "Ana Carolina", 
+              location: "Belo Horizonte",
+              text: "Preço excelente e sabor incomparável. Já virou tradição aqui em casa.", 
+              image: anaCarolinaImg 
+            },
           ].map((testimonial, i) => (
-            <Card key={i} className="p-4">
+            <Card key={i} className="p-5 border-border/50">
               <div className="flex items-center gap-1 mb-3">
                 {[...Array(5)].map((_, j) => (
-                  <Star key={j} className="w-3 h-3 text-gold fill-gold" />
+                  <Star key={j} className="w-4 h-4 text-gold fill-gold" />
                 ))}
               </div>
-              <p className="text-sm text-muted-foreground mb-4">"{testimonial.text}"</p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center text-gold font-semibold text-sm">
-                  {testimonial.avatar}
+              <p className="text-sm text-muted-foreground mb-5 italic leading-relaxed">
+                "{testimonial.text}"
+              </p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img 
+                    src={testimonial.image} 
+                    alt={testimonial.name}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                  <div>
+                    <span className="text-foreground text-sm font-medium block">{testimonial.name}</span>
+                    <span className="text-muted-foreground text-xs">{testimonial.location}</span>
+                  </div>
                 </div>
-                <span className="text-foreground text-sm font-medium">{testimonial.name}</span>
+                <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
               </div>
             </Card>
           ))}
