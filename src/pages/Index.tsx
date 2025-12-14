@@ -53,7 +53,6 @@ const Index = () => {
 
   const handleCheckoutFromCart = () => {
     if (cartItems.length > 0) {
-      setSelectedProduct(cartItems[0].product);
       setIsCartOpen(false);
       setCurrentStep('checkout');
     }
@@ -100,9 +99,9 @@ const Index = () => {
             />
           )}
           
-          {currentStep === 'checkout' && selectedProduct && (
+          {currentStep === 'checkout' && cartItems.length > 0 && (
             <CheckoutPage 
-              product={selectedProduct}
+              cartItems={cartItems}
               onBack={handleBackToStore}
             />
           )}
