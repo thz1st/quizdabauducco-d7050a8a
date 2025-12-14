@@ -273,6 +273,8 @@ const products: Product[] = [
 ];
 
 const ProductCard = ({ product, onBuy }: { product: Product; onBuy: () => void }) => {
+  const discountPercent = Math.round(((product.originalPrice - product.discountedPrice) / product.originalPrice) * 100);
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -294,7 +296,7 @@ const ProductCard = ({ product, onBuy }: { product: Product; onBuy: () => void }
           )}
           <div className="absolute top-3 right-3 bg-christmas-red text-foreground px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
             <Tag className="w-3 h-3" />
-            45% OFF
+            {discountPercent}% OFF
           </div>
         </div>
         <CardContent className="p-4">
