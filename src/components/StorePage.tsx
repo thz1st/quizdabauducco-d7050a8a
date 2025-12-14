@@ -13,6 +13,10 @@ import miniPanetone from '@/assets/mini-panetone.jpg';
 import mariaSilvaImg from '@/assets/maria-silva.jpg';
 import joaoPedroImg from '@/assets/joao-pedro.jpg';
 import anaCarolinaImg from '@/assets/ana-carolina.jpg';
+import visaLogo from '@/assets/visa.png';
+import mastercardLogo from '@/assets/mastercard.png';
+import eloLogo from '@/assets/elo.png';
+import pixLogo from '@/assets/pix.png';
 
 interface StorePageProps {
   onCheckout: (product: Product) => void;
@@ -348,13 +352,18 @@ const StorePage = ({ onCheckout, onRestartQuiz }: StorePageProps) => {
         {/* Payment Methods */}
         <div className="text-center mb-6">
           <p className="text-muted-foreground text-xs mb-3">Formas de pagamento</p>
-          <div className="flex justify-center gap-2 flex-wrap">
-            {["Visa", "Mastercard", "Elo", "Amex", "Hipercard", "PIX"].map((method, i) => (
+          <div className="flex justify-center items-center gap-3 flex-wrap">
+            {[
+              { src: visaLogo, alt: "Visa" },
+              { src: mastercardLogo, alt: "Mastercard" },
+              { src: eloLogo, alt: "Elo" },
+              { src: pixLogo, alt: "PIX" },
+            ].map((method, i) => (
               <div 
                 key={i} 
-                className="bg-white/10 px-3 py-1.5 rounded text-[10px] text-muted-foreground font-medium border border-border/30"
+                className="bg-white rounded-md px-2 py-1.5 flex items-center justify-center"
               >
-                {method}
+                <img src={method.src} alt={method.alt} className="h-6 w-auto object-contain" />
               </div>
             ))}
           </div>
