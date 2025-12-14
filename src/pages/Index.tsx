@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ParticlesBackground } from '@/components/Decorations';
+import { ParticlesBackground, Snowfall } from '@/components/Decorations';
 import LandingPage from '@/components/LandingPage';
 import QuizPage from '@/components/QuizPage';
 import RewardPage from '@/components/RewardPage';
@@ -69,6 +69,7 @@ const Index = () => {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
+      <Snowfall snowflakeCount={60} />
       <ParticlesBackground particleCount={40} />
       
       <AnimatePresence mode="wait">
