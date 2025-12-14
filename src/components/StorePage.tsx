@@ -275,6 +275,10 @@ const products: Product[] = [
 const ProductCard = ({ product, onBuy }: { product: Product; onBuy: () => void }) => {
   const discountPercent = Math.round(((product.originalPrice - product.discountedPrice) / product.originalPrice) * 100);
   
+  // Check if badge is a discount badge (contains % or OFF)
+  const isDiscountBadge = product.badge && (product.badge.includes('%') || product.badge.toLowerCase().includes('off'));
+  const showLeftBadge = product.badge && !isDiscountBadge;
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -289,7 +293,7 @@ const ProductCard = ({ product, onBuy }: { product: Product; onBuy: () => void }
             alt={product.name}
             className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
           />
-          {product.badge && (
+          {showLeftBadge && (
             <div className="absolute top-3 left-3 bg-gold text-coffee-dark px-3 py-1 rounded-full text-xs font-bold">
               {product.badge}
             </div>
