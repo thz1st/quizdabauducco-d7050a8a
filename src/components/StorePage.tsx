@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Star, ShoppingCart, Tag, Award } from 'lucide-react';
+import { Star, ShoppingCart, Tag, Award, Shield, MessageSquare, CreditCard, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { BauduccoLogo } from './Decorations';
@@ -303,22 +303,75 @@ const StorePage = ({ onCheckout, onRestartQuiz }: StorePageProps) => {
 
       {/* Stats */}
       <motion.div
-        className="max-w-3xl mx-auto grid grid-cols-3 gap-4 py-8 border-t border-border/50"
+        className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 py-8 border-t border-border/50"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.7 }}
       >
         {[
-          { value: "50.000+", label: "Clientes Felizes" },
-          { value: "99%", label: "Aprovação" },
-          { value: "24h", label: "Entrega Rápida" },
+          { icon: Shield, value: "50.000+", label: "Clientes satisfeitos" },
+          { icon: MessageSquare, value: "99%", label: "Aprovação" },
+          { icon: Award, value: "80+", label: "Anos de tradição" },
+          { icon: Truck, value: "24h", label: "Entrega expressa" },
         ].map((stat, i) => (
-          <div key={i} className="text-center">
-            <div className="text-gold text-2xl md:text-3xl font-bold">{stat.value}</div>
-            <div className="text-muted-foreground text-xs md:text-sm">{stat.label}</div>
+          <div key={i} className="text-center flex flex-col items-center gap-2">
+            <stat.icon className="w-6 h-6 text-gold" />
+            <div className="text-gold text-xl md:text-2xl font-bold">{stat.value}</div>
+            <div className="text-muted-foreground text-xs">{stat.label}</div>
           </div>
         ))}
       </motion.div>
+
+      {/* Footer with Security Badges */}
+      <motion.footer
+        className="max-w-4xl mx-auto mt-8 pb-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.8 }}
+      >
+        {/* Security Badges */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {[
+            { icon: Shield, label: "Site Seguro", sublabel: "SSL Certificado" },
+            { icon: MessageSquare, label: "Reclame Aqui", sublabel: "Nota 9.5" },
+            { icon: CreditCard, label: "Pagamento Seguro", sublabel: "100% Protegido" },
+            { icon: Truck, label: "Entrega Garantida", sublabel: "Rastreável" },
+          ].map((badge, i) => (
+            <div key={i} className="flex flex-col items-center gap-2 p-4 bg-card/50 rounded-lg border border-border/30">
+              <badge.icon className="w-8 h-8 text-gold" />
+              <span className="text-foreground text-xs font-semibold text-center">{badge.label}</span>
+              <span className="text-muted-foreground text-[10px] text-center">{badge.sublabel}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Payment Methods */}
+        <div className="text-center mb-6">
+          <p className="text-muted-foreground text-xs mb-3">Formas de pagamento</p>
+          <div className="flex justify-center gap-2 flex-wrap">
+            {["Visa", "Mastercard", "Elo", "Amex", "Hipercard", "PIX"].map((method, i) => (
+              <div 
+                key={i} 
+                className="bg-white/10 px-3 py-1.5 rounded text-[10px] text-muted-foreground font-medium border border-border/30"
+              >
+                {method}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Company Info */}
+        <div className="text-center border-t border-border/30 pt-6">
+          <p className="text-muted-foreground text-[10px] leading-relaxed max-w-2xl mx-auto">
+            Bauducco & Cia Ltda. CNPJ: 61.125.821/0001-90<br />
+            Rua Jorge Araújo, 201 - Guarulhos/SP - CEP: 07040-000<br />
+            SAC: 0800 770 8855 | atendimento@bauducco.com.br
+          </p>
+          <p className="text-muted-foreground/60 text-[9px] mt-4">
+            © 2025 Bauducco. Todos os direitos reservados.
+          </p>
+        </div>
+      </motion.footer>
     </div>
   );
 };
