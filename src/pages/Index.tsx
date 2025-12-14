@@ -7,6 +7,7 @@ import RewardPage from '@/components/RewardPage';
 import StorePage, { type Product } from '@/components/StorePage';
 import CheckoutPage from '@/components/CheckoutPage';
 import FloatingCart, { type CartItem } from '@/components/FloatingCart';
+import { useToast } from '@/hooks/use-toast';
 
 type Step = 'landing' | 'quiz' | 'reward' | 'store' | 'checkout';
 
@@ -15,6 +16,7 @@ const Index = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const { toast } = useToast();
 
   const handleStart = () => setCurrentStep('quiz');
   const handleQuizComplete = () => setCurrentStep('reward');
@@ -33,6 +35,11 @@ const Index = () => {
       return [...prev, { product, quantity: 1 }];
     });
     setIsCartOpen(true);
+    
+    toast({
+      title: "✅ Adicionado ao carrinho!",
+      description: `${product.name} foi adicionado com sucesso`,
+    });
   };
 
   const handleRemoveFromCart = (productId: number) => {
