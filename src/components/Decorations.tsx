@@ -1,5 +1,6 @@
 import { Star } from 'lucide-react';
 import { motion } from 'framer-motion';
+import bauduccoLogo from '@/assets/bauducco-logo.svg';
 
 interface StarDecorationProps {
   className?: string;
@@ -66,11 +67,11 @@ export const BauduccoLogo = () => {
       transition={{ duration: 0.6 }}
     >
       <StarDecoration className="mb-2" />
-      <div className="bg-christmas-red px-6 py-2 rounded-full">
-        <span className="font-display text-2xl md:text-3xl font-bold text-foreground italic">
-          Bauducco
-        </span>
-      </div>
+      <img 
+        src={bauduccoLogo} 
+        alt="Bauducco" 
+        className="h-12 md:h-16 w-auto"
+      />
     </motion.div>
   );
 };
