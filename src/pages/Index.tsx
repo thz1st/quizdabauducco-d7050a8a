@@ -6,22 +6,67 @@ import QuizPage from '@/components/QuizPage';
 import RewardPage from '@/components/RewardPage';
 import StorePage, { type Product } from '@/components/StorePage';
 import CheckoutPage from '@/components/CheckoutPage';
+import FloatingCart, { type CartItem } from '@/components/FloatingCart';
 
 type Step = 'landing' | 'quiz' | 'reward' | 'store' | 'checkout';
 
 const Index = () => {
   const [currentStep, setCurrentStep] = useState<Step>('landing');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   const handleStart = () => setCurrentStep('quiz');
   const handleQuizComplete = () => setCurrentStep('reward');
   const handleViewProducts = () => setCurrentStep('store');
-  const handleCheckout = (product: Product) => {
-    setSelectedProduct(product);
-    setCurrentStep('checkout');
+  
+  const handleAddToCart = (product: Product) => {
+    setCartItems((prev) => {
+      const existing = prev.find((item) => item.product.id === product.id);
+      if (existing) {
+        return prev.map((item) =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [...prev, { product, quantity: 1 }];
+    });
+    setIsCartOpen(true);
   };
+
+  const handleRemoveFromCart = (productId: number) => {
+    setCartItems((prev) => prev.filter((item) => item.product.id !== productId));
+  };
+
+  const handleUpdateQuantity = (productId: number, quantity: number) => {
+    if (quantity === 0) {
+      handleRemoveFromCart(productId);
+      return;
+    }
+    setCartItems((prev) =>
+      prev.map((item) =>
+        item.product.id === productId ? { ...item, quantity } : item
+      )
+    );
+  };
+
+  const handleCheckoutFromCart = () => {
+    if (cartItems.length > 0) {
+      setSelectedProduct(cartItems[0].product);
+      setIsCartOpen(false);
+      setCurrentStep('checkout');
+    }
+  };
+
+  const handleCheckout = (product: Product) => {
+    handleAddToCart(product);
+  };
+
   const handleBackToStore = () => setCurrentStep('store');
   const handleRestartQuiz = () => setCurrentStep('landing');
+
+  const showCart = currentStep === 'store' || currentStep === 'reward';
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -63,6 +108,19 @@ const Index = () => {
           )}
         </motion.div>
       </AnimatePresence>
+
+      {/* Floating Cart */}
+      {showCart && (
+        <FloatingCart
+          items={cartItems}
+          onAddItem={handleAddToCart}
+          onRemoveItem={handleRemoveFromCart}
+          onUpdateQuantity={handleUpdateQuantity}
+          onCheckout={handleCheckoutFromCart}
+          isOpen={isCartOpen}
+          onToggle={() => setIsCartOpen(!isCartOpen)}
+        />
+      )}
     </div>
   );
 };
