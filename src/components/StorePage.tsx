@@ -4,12 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { BauduccoLogo } from './Decorations';
 
-import chocottonePistache from '@/assets/chocottone-pistache.jpg';
-import chocottoneMousse from '@/assets/chocottone-mousse.jpg';
-import chocottoneOvomaltine from '@/assets/chocottone-ovomaltine.jpg';
-import chocottoneTradicional from '@/assets/chocottone-tradicional.jpg';
-import panetoneFrutas from '@/assets/panetone-frutas.jpg';
-import miniPanetone from '@/assets/mini-panetone.jpg';
+import chocottonePistache from '@/assets/chocottone-pistache-new.webp';
+import chocottoneMousse from '@/assets/chocottone-mousse-new.webp';
+import chocottoneAvela from '@/assets/chocottone-avela.webp';
+import chocottoneTrufado from '@/assets/chocottone-trufado.webp';
+import chocottoneMms from '@/assets/chocottone-mms.webp';
+import chocottoneFini from '@/assets/chocottone-fini.jpg';
+import lataChocottone from '@/assets/lata-chocottone.webp';
+import cestaNatal from '@/assets/cesta-natal.webp';
+import chocoBrownie from '@/assets/choco-brownie.webp';
+import cookiesTradicional from '@/assets/cookies-tradicional.jpg';
 import mariaSilvaImg from '@/assets/maria-silva.jpg';
 import joaoPedroImg from '@/assets/joao-pedro.jpg';
 import anaCarolinaImg from '@/assets/ana-carolina.jpg';
@@ -38,10 +42,10 @@ export interface Product {
 const products: Product[] = [
   {
     id: 1,
-    name: "Chocottone Recheio Pistache",
-    description: "Recheio cremoso de pistache com gotas de chocolate",
-    originalPrice: 120.00,
-    discountedPrice: 12.90,
+    name: "Chocottone Recheio Pistache 450g",
+    description: "Panettone com recheio de pistache, gotas e cobertura sabor chocolate",
+    originalPrice: 89.90,
+    discountedPrice: 49.45,
     rating: 5,
     reviews: 847,
     image: chocottonePistache,
@@ -49,10 +53,10 @@ const products: Product[] = [
   },
   {
     id: 2,
-    name: "Chocottone Recheio Mousse",
-    description: "Recheio de mousse de chocolate ao leite",
-    originalPrice: 90.00,
-    discountedPrice: 12.90,
+    name: "Chocottone Recheio Mousse 450g",
+    description: "Panettone com recheio de chocolate sabor mousse, gotas e cobertura",
+    originalPrice: 79.90,
+    discountedPrice: 43.95,
     rating: 5,
     reviews: 623,
     image: chocottoneMousse,
@@ -60,45 +64,90 @@ const products: Product[] = [
   },
   {
     id: 3,
-    name: "Chocottone Ovomaltine",
-    description: "Com creme de Ovomaltine e flocos crocantes",
-    originalPrice: 85.00,
-    discountedPrice: 12.90,
+    name: "Chocottone Chocolate e Avelã 450g",
+    description: "Panettone com recheio de chocolate e avelã, cobertura e gotas",
+    originalPrice: 79.90,
+    discountedPrice: 43.95,
     rating: 5,
     reviews: 512,
-    image: chocottoneOvomaltine,
+    image: chocottoneAvela,
     badge: "-45%"
   },
   {
     id: 4,
-    name: "Chocottone Tradicional 500g",
-    description: "O clássico Chocottone com gotas de chocolate",
-    originalPrice: 65.00,
-    discountedPrice: 8.90,
+    name: "Chocottone Trufado 450g",
+    description: "Panettone com recheio de chocolate sabor trufa, gotas e cobertura",
+    originalPrice: 79.90,
+    discountedPrice: 43.95,
     rating: 5,
     reviews: 1247,
-    image: chocottoneTradicional,
+    image: chocottoneTrufado,
     badge: "-45%"
   },
   {
     id: 5,
-    name: "Panetone Frutas Premium",
-    description: "Com frutas cristalizadas selecionadas",
-    originalPrice: 75.00,
-    discountedPrice: 9.90,
-    rating: 4,
+    name: "Chocottone M&M's",
+    description: "Panettone com gotas de chocolate, cobertura e sachê de M&M's",
+    originalPrice: 69.90,
+    discountedPrice: 38.45,
+    rating: 5,
     reviews: 389,
-    image: panetoneFrutas
+    image: chocottoneMms,
+    badge: "Novidade"
   },
   {
     id: 6,
-    name: "Mini Panetone Gotas",
-    description: "Mini panetone com gotas de chocolate",
-    originalPrice: 25.00,
-    discountedPrice: 4.90,
+    name: "Chocottone Fini Dentaduras 450g",
+    description: "Panettone com recheio sabor morango e framboesa, gotas e cobertura",
+    originalPrice: 69.90,
+    discountedPrice: 38.45,
     rating: 5,
     reviews: 756,
-    image: miniPanetone,
+    image: chocottoneFini,
+    badge: "Novo"
+  },
+  {
+    id: 7,
+    name: "Lata Chocottone 750g",
+    description: "Chocottone tradicional com gotas de chocolate em lata colecionável",
+    originalPrice: 99.90,
+    discountedPrice: 54.95,
+    rating: 5,
+    reviews: 932,
+    image: lataChocottone,
+    badge: "Premium"
+  },
+  {
+    id: 8,
+    name: "Cesta de Natal Bauducco 1,97kg",
+    description: "Cesta com sortimento de produtos Bauducco + enfeite natalino colecionável",
+    originalPrice: 149.90,
+    discountedPrice: 82.45,
+    rating: 5,
+    reviews: 428,
+    image: cestaNatal,
+    badge: "Especial"
+  },
+  {
+    id: 9,
+    name: "Choco Brownie Netflix 80g",
+    description: "Biscoito sabor brownie com gotas de chocolate - edição Netflix",
+    originalPrice: 12.90,
+    discountedPrice: 7.10,
+    rating: 5,
+    reviews: 1156,
+    image: chocoBrownie,
+    badge: "Edição Limitada"
+  },
+  {
+    id: 10,
+    name: "Cookies Tradicional 100g",
+    description: "Cookies nº1 do Brasil com gotas de chocolate",
+    originalPrice: 9.90,
+    discountedPrice: 5.45,
+    rating: 5,
+    reviews: 2341,
+    image: cookiesTradicional,
     badge: "-45%"
   },
 ];
