@@ -7,13 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BauduccoLogo } from './Decorations';
 import type { Product } from './StorePage';
+import type { CartItem } from './FloatingCart';
 
 interface CheckoutPageProps {
-  product: Product;
+  cartItems: CartItem[];
   onBack: () => void;
 }
 
-const CheckoutPage = ({ product, onBack }: CheckoutPageProps) => {
+const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card'>('pix');
   const [showQRCode, setShowQRCode] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -62,30 +63,33 @@ const CheckoutPage = ({ product, onBack }: CheckoutPageProps) => {
               <CardContent className="p-4">
                 <h3 className="font-semibold text-foreground mb-4">Resumo do Pedido</h3>
                 
-                <div className="flex gap-3 mb-4">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-20 h-20 rounded-lg object-cover"
-                  />
-                  <div className="flex-1">
-                    <h4 className="text-sm font-medium text-foreground mb-1">{product.name}</h4>
-                    <p className="text-xs text-muted-foreground mb-2">{product.description}</p>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-gold font-bold">
-                        R$ {product.discountedPrice.toFixed(2).replace('.', ',')}
-                      </span>
-                      <span className="text-muted-foreground text-xs line-through">
-                        R$ {product.originalPrice.toFixed(2).replace('.', ',')}
-                      </span>
+                <div className="space-y-4 mb-4 max-h-64 overflow-y-auto">
+                  {cartItems.map((item) => (
+                    <div key={item.product.id} className="flex gap-3">
+                      <img
+                        src={item.product.image}
+                        alt={item.product.name}
+                        className="w-16 h-16 rounded-lg object-cover"
+                      />
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-foreground mb-1">{item.product.name}</h4>
+                        <p className="text-xs text-muted-foreground">Qtd: {item.quantity}</p>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-gold font-bold text-sm">
+                            R$ {(item.product.discountedPrice * item.quantity).toFixed(2).replace('.', ',')}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
 
                 <div className="border-t border-border pt-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span className="text-foreground">R$ {product.discountedPrice.toFixed(2).replace('.', ',')}</span>
+                    <span className="text-muted-foreground">Subtotal ({cartItems.reduce((acc, item) => acc + item.quantity, 0)} itens)</span>
+                    <span className="text-foreground">
+                      R$ {cartItems.reduce((acc, item) => acc + item.product.discountedPrice * item.quantity, 0).toFixed(2).replace('.', ',')}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Frete</span>
@@ -93,7 +97,9 @@ const CheckoutPage = ({ product, onBack }: CheckoutPageProps) => {
                   </div>
                   <div className="flex justify-between text-lg font-bold pt-2 border-t border-border">
                     <span className="text-foreground">Total</span>
-                    <span className="text-gold">R$ {product.discountedPrice.toFixed(2).replace('.', ',')}</span>
+                    <span className="text-gold">
+                      R$ {cartItems.reduce((acc, item) => acc + item.product.discountedPrice * item.quantity, 0).toFixed(2).replace('.', ',')}
+                    </span>
                   </div>
                 </div>
 
