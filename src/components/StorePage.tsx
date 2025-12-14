@@ -281,11 +281,11 @@ const ProductCard = ({ product, onBuy }: { product: Product; onBuy: () => void }
       transition={{ duration: 0.3 }}
     >
       <Card className="overflow-hidden group cursor-pointer h-full">
-        <div className="relative aspect-square overflow-hidden bg-secondary/30">
+        <div className="relative aspect-square overflow-hidden bg-secondary/30 p-2">
           <img
             src={product.image}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110"
           />
           {product.badge && (
             <div className="absolute top-3 left-3 bg-gold text-coffee-dark px-3 py-1 rounded-full text-xs font-bold">
