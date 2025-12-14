@@ -114,6 +114,10 @@ const RewardPage = ({ onContinue }: RewardPageProps) => {
             <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-background rounded-full" />
             <div className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-background rounded-full" />
           </div>
+          
+          <p className="text-muted-foreground/60 text-xs mt-3 text-center">
+            *Desconto válido até 31/12/2025. Não cumulativo com outras promoções.
+          </p>
         </motion.div>
 
         {/* CTA Button */}
