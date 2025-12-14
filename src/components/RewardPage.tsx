@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Gift, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { BauduccoLogo, StarDecoration } from './Decorations';
+import { BauduccoLogo } from './Decorations';
 import confetti from 'canvas-confetti';
 
 interface RewardPageProps {
@@ -75,7 +75,7 @@ const RewardPage = ({ onContinue }: RewardPageProps) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
-          Parabéns! 🎄
+          Parabéns!
         </motion.h2>
 
         <motion.p
@@ -87,26 +87,28 @@ const RewardPage = ({ onContinue }: RewardPageProps) => {
           Você ganhou um presente especial de Natal!
         </motion.p>
 
-        {/* Coupon Ticket */}
+        {/* Coupon Ticket - Yellow Style */}
         <motion.div
-          className="relative w-full max-w-sm mb-8"
+          className="relative w-full max-w-md mb-8"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.9, type: "spring" }}
         >
-          <div className="gradient-dark-card border-2 border-dashed border-gold rounded-2xl p-8 relative overflow-hidden">
-            {/* Shimmer effect */}
-            <div className="absolute inset-0 animate-shimmer" />
-            
-            <StarDecoration className="mb-4" />
-            
-            <div className="text-gold text-6xl md:text-7xl font-bold font-display mb-2">
-              45% OFF
+          <div className="bg-gold rounded-2xl p-6 relative overflow-hidden">
+            {/* Inner dashed border */}
+            <div className="border-2 border-dashed border-coffee-dark/30 rounded-xl p-6 text-center">
+              <p className="text-coffee-dark text-sm font-medium mb-2">
+                Cupom de Desconto
+              </p>
+              
+              <div className="text-coffee-dark text-5xl md:text-6xl font-bold font-display mb-2">
+                45% OFF
+              </div>
+              
+              <p className="text-coffee-dark/70 text-sm">
+                Válido para produtos selecionados
+              </p>
             </div>
-            
-            <p className="text-muted-foreground text-sm">
-              Válido para produtos selecionados
-            </p>
 
             {/* Decorative circles on sides */}
             <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-background rounded-full" />

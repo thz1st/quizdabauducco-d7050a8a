@@ -65,7 +65,7 @@ const Index = () => {
   const handleBackToStore = () => setCurrentStep('store');
   const handleRestartQuiz = () => setCurrentStep('landing');
 
-  const showCart = currentStep === 'store' || currentStep === 'reward';
+  const showCart = currentStep === 'store';
 
   return (
     <div className="relative min-h-screen overflow-hidden">
