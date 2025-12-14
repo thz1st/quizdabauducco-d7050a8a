@@ -13,7 +13,7 @@ import chocottoneFini from '@/assets/chocottone-fini.jpg';
 import lataChocottone from '@/assets/lata-chocottone.webp';
 import cestaNatal from '@/assets/cesta-natal.webp';
 import chocoBrownie from '@/assets/choco-brownie.webp';
-import cookiesTradicional from '@/assets/cookies-tradicional.jpg';
+import cookiesTradicional from '@/assets/cookies-tradicional.webp';
 import biscoitoMorango from '@/assets/biscoito-morango.webp';
 import bellastella from '@/assets/bellastella.webp';
 import buongrano from '@/assets/buongrano.webp';
