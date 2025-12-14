@@ -16,6 +16,58 @@ export const StarDecoration = ({ className }: StarDecorationProps) => {
   );
 };
 
+interface SnowfallProps {
+  snowflakeCount?: number;
+}
+
+export const Snowfall = ({ snowflakeCount = 60 }: SnowfallProps) => {
+  const snowflakes = Array.from({ length: snowflakeCount }, (_, i) => ({
+    id: i,
+    left: `${Math.random() * 100}%`,
+    size: Math.random() * 4 + 2,
+    delay: Math.random() * 5,
+    duration: Math.random() * 5 + 5,
+    opacity: Math.random() * 0.6 + 0.4,
+    drift: Math.random() * 40 - 20,
+  }));
+
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+      {snowflakes.map((flake) => (
+        <motion.div
+          key={flake.id}
+          className="absolute rounded-full bg-white"
+          style={{
+            left: flake.left,
+            top: -10,
+            width: flake.size,
+            height: flake.size,
+            opacity: flake.opacity,
+          }}
+          animate={{
+            y: ['0vh', '110vh'],
+            x: [0, flake.drift, -flake.drift, 0],
+          }}
+          transition={{
+            y: {
+              duration: flake.duration,
+              delay: flake.delay,
+              repeat: Infinity,
+              ease: 'linear',
+            },
+            x: {
+              duration: flake.duration / 2,
+              delay: flake.delay,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            },
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
 interface ParticlesBackgroundProps {
   particleCount?: number;
 }
