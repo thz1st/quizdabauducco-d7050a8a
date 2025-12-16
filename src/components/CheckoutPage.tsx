@@ -441,16 +441,6 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
 
                 {/* Payment */}
                 <h3 className="font-semibold text-foreground mb-4">Forma de Pagamento</h3>
-                <div className="mb-6">
-                  <Button
-                    variant="gold"
-                    className="h-16 w-full"
-                    disabled
-                  >
-                    <QrCode className="w-5 h-5 mr-2" />
-                    PIX
-                  </Button>
-                </div>
 
                 {paymentMethod === 'pix' && !showQRCode && (
                   <Button variant="gold" size="lg" className="w-full" onClick={handleGenerateQR} disabled={loading}>
