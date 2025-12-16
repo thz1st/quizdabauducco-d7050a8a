@@ -1,5 +1,8 @@
 project_id = "eudnclmbrsebofrwkqxy"
 
+[functions.check-pix]
+verify_jwt = false
+
 [functions.create-pix]
 verify_jwt = false
 

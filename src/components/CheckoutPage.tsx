@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, QrCode, Copy, Check, ShieldCheck, Truck, Loader2 } from 'lucide-react';
+import { ArrowLeft, QrCode, Copy, Check, ShieldCheck, Truck, Loader2, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,8 +22,11 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [pixCode, setPixCode] = useState('');
   const [pixQrCode, setPixQrCode] = useState('');
+  const [transactionId, setTransactionId] = useState('');
   const { toast } = useToast();
 
   // Form state
@@ -148,6 +151,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
 
       setPixCode(data.pixCode || '');
       setPixQrCode(data.pixQrCode || '');
+      setTransactionId(data.transactionId || '');
       setShowQRCode(true);
 
       toast({
@@ -166,6 +170,120 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
       setLoading(false);
     }
   };
+
+  const handleCheckPayment = async () => {
+    if (!transactionId) {
+      toast({
+        title: "Erro",
+        description: "ID da transação não encontrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCheckingPayment(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('check-pix', {
+        body: { transactionId },
+      });
+
+      console.log('Payment check response:', data, error);
+
+      if (error) {
+        throw new Error(error.message || 'Erro ao verificar pagamento');
+      }
+
+      if (data?.isPaid) {
+        setPaymentConfirmed(true);
+        toast({
+          title: "Pagamento confirmado!",
+          description: "Seu pedido foi processado com sucesso.",
+        });
+      } else {
+        toast({
+          title: "Pagamento pendente",
+          description: "O pagamento ainda não foi identificado. Tente novamente em alguns segundos.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error checking payment:', error);
+      toast({
+        title: "Erro ao verificar",
+        description: error instanceof Error ? error.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setCheckingPayment(false);
+    }
+  };
+
+  // Payment confirmed success screen
+  if (paymentConfirmed) {
+    return (
+      <div className="min-h-screen px-4 py-6 flex items-center justify-center">
+        <motion.div
+          className="text-center max-w-md"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <motion.div
+            className="w-24 h-24 bg-christmas-green/20 rounded-full flex items-center justify-center mx-auto mb-6"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+          >
+            <Package className="w-12 h-12 text-christmas-green" />
+          </motion.div>
+          
+          <motion.h1
+            className="font-display text-3xl md:text-4xl text-foreground mb-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            Pagamento Confirmado!
+          </motion.h1>
+          
+          <motion.p
+            className="text-lg text-muted-foreground mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            Seu produto chegará em sua casa em breve. Obrigado por comprar conosco!
+          </motion.p>
+
+          <motion.div
+            className="bg-card/50 border border-border rounded-xl p-6 mb-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <div className="flex items-center gap-3 text-left">
+              <Truck className="w-8 h-8 text-gold flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-foreground">Entrega em até 24h</p>
+                <p className="text-sm text-muted-foreground">
+                  {formData.street}, {formData.number} - {formData.neighborhood}, {formData.city}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+          >
+            <BauduccoLogo />
+          </motion.div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen px-4 py-6">
@@ -365,7 +483,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
                     <p className="text-muted-foreground text-sm mb-4">
                       Escaneie o QR Code ou copie o código abaixo
                     </p>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 mb-4">
                       <Input
                         value={pixCode ? (pixCode.length > 50 ? pixCode.slice(0, 50) + '...' : pixCode) : 'Código não disponível'}
                         readOnly
@@ -376,8 +494,24 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
                       </Button>
                     </div>
                     {copied && (
-                      <p className="text-christmas-green text-sm mt-2">Código copiado!</p>
+                      <p className="text-christmas-green text-sm mb-4">Código copiado!</p>
                     )}
+                    
+                    {/* Check Payment Button */}
+                    <Button 
+                      variant="gold" 
+                      size="lg" 
+                      className="w-full mt-4" 
+                      onClick={handleCheckPayment}
+                      disabled={checkingPayment || !transactionId}
+                    >
+                      {checkingPayment ? (
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      ) : (
+                        <Check className="w-5 h-5 mr-2" />
+                      )}
+                      {checkingPayment ? 'Verificando...' : 'Já efetuei o pagamento'}
+                    </Button>
                   </motion.div>
                 )}
 
