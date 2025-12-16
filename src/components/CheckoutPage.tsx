@@ -469,7 +469,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
                   >
                     {pixQrCode ? (
                       <img 
-                        src={pixQrCode} 
+                        src={`data:image/png;base64,${pixQrCode}`} 
                         alt="QR Code PIX" 
                         className="w-48 h-48 mx-auto mb-4 rounded-xl"
                       />
