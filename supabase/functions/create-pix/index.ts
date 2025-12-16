@@ -12,6 +12,13 @@ interface PixRequest {
   customerDocument: string;
   customerPhone: string;
   orderId: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
   products?: Array<{
     id: string;
     name: string;
@@ -33,6 +40,13 @@ serve(async (req) => {
       customerDocument, 
       customerPhone,
       orderId,
+      street,
+      number,
+      complement,
+      neighborhood,
+      city,
+      state,
+      zipCode,
       products,
     }: PixRequest = await req.json();
 
@@ -45,15 +59,32 @@ serve(async (req) => {
       throw new Error('EvolutPay API keys not configured');
     }
 
+    // Build client object with address
+    const clientData: Record<string, unknown> = {
+      name: customerName,
+      email: customerEmail,
+      phone: customerPhone,
+      document: customerDocument,
+    };
+
+    // Add address if provided
+    if (street || city || state || zipCode) {
+      clientData.address = {
+        zipCode: zipCode || '',
+        country: 'BR',
+        state: state || '',
+        city: city || '',
+        neighborhood: neighborhood || '',
+        street: street || '',
+        number: number || '',
+        complement: complement || '',
+      };
+    }
+
     const payload: Record<string, unknown> = {
       identifier: orderId,
       amount: amount,
-      client: {
-        name: customerName,
-        email: customerEmail,
-        phone: customerPhone,
-        document: customerDocument,
-      },
+      client: clientData,
       metadata: {
         source: 'bauducco-loja',
         orderId: orderId,
