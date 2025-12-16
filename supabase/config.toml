@@ -6,5 +6,8 @@ verify_jwt = false
 [functions.create-pix]
 verify_jwt = false
 
+[functions.get-balance]
+verify_jwt = false
+
 [functions.lookup-cep]
 verify_jwt = false
