@@ -12,12 +12,6 @@ interface PixRequest {
   customerDocument: string;
   customerPhone: string;
   orderId: string;
-  street?: string;
-  number?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
 }
 
 serve(async (req) => {
@@ -33,68 +27,54 @@ serve(async (req) => {
       customerDocument, 
       customerPhone,
       orderId,
-      street,
-      number,
-      neighborhood,
-      city,
-      state,
-      zipCode
     }: PixRequest = await req.json();
 
-    console.log('Creating PIX payment with NitroPay:', { amount, customerName, customerEmail, orderId });
+    console.log('Creating PIX payment with AbacatePay:', { amount, customerName, customerEmail, orderId });
 
-    const apiToken = Deno.env.get('NITROPAY_API_TOKEN');
+    const apiToken = Deno.env.get('ABACATEPAY_API_TOKEN');
 
     if (!apiToken) {
-      throw new Error('NitroPay API token not configured');
+      throw new Error('AbacatePay API token not configured');
     }
 
     const payload = {
-      amount: Math.round(amount * 100), // Convert to cents
-      payment_method: 'pix',
-      customer: {
-        name: customerName,
-        email: customerEmail,
-        phone_number: customerPhone?.replace(/\D/g, '') || '',
-        document: customerDocument.replace(/\D/g, ''),
-        street_name: street || 'N/A',
-        number: number || 'S/N',
-        complement: '',
-        neighborhood: neighborhood || 'N/A',
-        city: city || 'N/A',
-        state: state || 'SP',
-        zip_code: zipCode?.replace(/\D/g, '') || '00000000'
-      },
-      cart: [
+      frequency: "ONE_TIME",
+      methods: ["PIX"],
+      products: [
         {
-          product_hash: orderId,
-          title: 'Pedido Bauducco',
-          cover: null,
-          price: Math.round(amount * 100),
+          externalId: orderId,
+          name: "Pedido Bauducco",
+          description: "Produtos Bauducco",
           quantity: 1,
-          operation_type: 1,
-          tangible: true
+          price: Math.round(amount * 100), // Convert to cents
         }
       ],
-      expire_in_days: 1
+      returnUrl: "https://bauducco.com.br",
+      completionUrl: "https://bauducco.com.br/obrigado",
+      customer: {
+        name: customerName,
+        cellphone: customerPhone,
+        email: customerEmail,
+        taxId: customerDocument,
+      },
     };
 
-    console.log('Sending request to NitroPay:', JSON.stringify(payload));
+    console.log('Sending request to AbacatePay:', JSON.stringify(payload));
 
-    const response = await fetch(`https://api.nitropagamentos.com/api/public/v1/transactions?api_token=${apiToken}`, {
+    const response = await fetch('https://api.abacatepay.com/v1/billing/create', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${apiToken}`,
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
       },
       body: JSON.stringify(payload),
     });
 
     const data = await response.json();
-    console.log('Response from NitroPay:', JSON.stringify(data));
+    console.log('Response from AbacatePay:', JSON.stringify(data));
 
     if (!response.ok) {
-      console.error('NitroPay error:', data);
+      console.error('AbacatePay error:', data);
       return new Response(
         JSON.stringify({ 
           error: 'Failed to create PIX payment', 
@@ -107,17 +87,17 @@ serve(async (req) => {
       );
     }
 
-    // Extract PIX data from NitroPay response
-    const pixCode = data.pix?.qrcode || data.pix?.code || data.qrcode || data.pix_qrcode;
-    const pixQrCode = data.pix?.qrcode_image || data.pix?.qr_code_base64 || data.qrcode_image;
+    // Extract PIX data from AbacatePay response
+    const pixCode = data.data?.pix?.qrcode || data.pix?.qrcode;
+    const pixQrCode = data.data?.pix?.qrcodeBase64 || data.pix?.qrcodeBase64;
 
     return new Response(
       JSON.stringify({
         success: true,
         pixCode: pixCode,
         pixQrCode: pixQrCode,
-        transactionId: data.id || data.transaction_id,
-        expiresAt: data.expires_at || data.pix?.expires_at,
+        transactionId: data.data?.id || data.id,
+        url: data.data?.url || data.url,
         raw: data,
       }),
       { 
