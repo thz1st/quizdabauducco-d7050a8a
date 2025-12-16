@@ -69,8 +69,11 @@ serve(async (req) => {
 
     // Add address if provided
     if (street || city || state || zipCode) {
+      // Clean zipCode - remove non-numeric characters
+      const cleanZipCode = zipCode ? zipCode.replace(/\D/g, '') : '';
+      
       clientData.address = {
-        zipCode: zipCode || '',
+        zipCode: cleanZipCode,
         country: 'BR',
         state: state || '',
         city: city || '',
