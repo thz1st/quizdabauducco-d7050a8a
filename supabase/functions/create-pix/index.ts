@@ -69,21 +69,24 @@ serve(async (req) => {
 
     // Add address only if we have a valid 8-digit zipCode
     const cleanZipCode = zipCode ? zipCode.replace(/\D/g, '') : '';
-    
-    if (cleanZipCode.length === 8) {
+    const formattedZipCode = cleanZipCode.length === 8
+      ? `${cleanZipCode.slice(0, 5)}-${cleanZipCode.slice(5)}`
+      : '';
+
+    if (formattedZipCode) {
       clientData.address = {
-        zipCode: cleanZipCode,
+        zipCode: formattedZipCode,
         country: 'BR',
-        state: state || 'SP',
+        state: state || '',
         city: city || '',
         neighborhood: neighborhood || '',
         street: street || '',
         number: number || '',
         complement: complement || '',
       };
-      console.log('Including address with zipCode:', cleanZipCode);
+      console.log('Including address with zipCode:', formattedZipCode);
     } else {
-      console.log('Skipping address - invalid zipCode:', cleanZipCode);
+      console.log('Skipping address - invalid zipCode:', zipCode);
     }
 
     const payload: Record<string, unknown> = {
