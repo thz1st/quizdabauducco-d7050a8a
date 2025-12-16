@@ -40,6 +40,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
     number: '',
     neighborhood: '',
     city: '',
+    state: '',
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,6 +69,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
             street: data.street || prev.street,
             neighborhood: data.neighborhood || prev.neighborhood,
             city: data.city || prev.city,
+            state: data.state || prev.state,
           }));
           toast({
             title: "Endereço encontrado!",
@@ -125,7 +127,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
           number: formData.number,
           neighborhood: formData.neighborhood,
           city: formData.city,
-          state: 'SP',
+          state: formData.state,
           zipCode: formData.cep,
         },
       });
