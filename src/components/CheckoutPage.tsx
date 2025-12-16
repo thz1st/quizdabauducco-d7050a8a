@@ -21,6 +21,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
   const [showQRCode, setShowQRCode] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingCep, setLoadingCep] = useState(false);
   const [pixCode, setPixCode] = useState('');
   const [pixQrCode, setPixQrCode] = useState('');
   const { toast } = useToast();
@@ -41,6 +42,47 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    setFormData(prev => ({ ...prev, cep: value }));
+
+    // Auto-lookup when CEP has 8 digits (with or without hyphen)
+    const cleanCep = value.replace(/\D/g, '');
+    if (cleanCep.length === 8) {
+      setLoadingCep(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('lookup-cep', {
+          body: { cep: cleanCep },
+        });
+
+        if (error) throw error;
+
+        if (data && !data.error) {
+          setFormData(prev => ({
+            ...prev,
+            street: data.street || prev.street,
+            neighborhood: data.neighborhood || prev.neighborhood,
+            city: data.city || prev.city,
+          }));
+          toast({
+            title: "Endereço encontrado!",
+            description: `${data.city} - ${data.state}`,
+          });
+        } else if (data?.error) {
+          toast({
+            title: "CEP não encontrado",
+            description: "Verifique o CEP informado.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error('Error looking up CEP:', error);
+      } finally {
+        setLoadingCep(false);
+      }
+    }
   };
 
   const handleCopyPix = () => {
@@ -249,9 +291,12 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
                 <h3 className="font-semibold text-foreground mb-4">Endereço de Entrega</h3>
                 <div className="grid gap-4 mb-6">
                   <div className="grid md:grid-cols-3 gap-4">
-                    <div>
+                    <div className="relative">
                       <Label htmlFor="cep">CEP</Label>
-                      <Input id="cep" placeholder="00000-000" className="mt-1" value={formData.cep} onChange={handleInputChange} />
+                      <Input id="cep" placeholder="00000-000" className="mt-1" value={formData.cep} onChange={handleCepChange} />
+                      {loadingCep && (
+                        <Loader2 className="w-4 h-4 animate-spin absolute right-3 top-9 text-muted-foreground" />
+                      )}
                     </div>
                     <div className="md:col-span-2">
                       <Label htmlFor="street">Rua</Label>
