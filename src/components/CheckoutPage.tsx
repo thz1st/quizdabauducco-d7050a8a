@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CreditCard, QrCode, Copy, Check, ShieldCheck, Truck, Loader2 } from 'lucide-react';
+import { ArrowLeft, QrCode, Copy, Check, ShieldCheck, Truck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,7 @@ interface CheckoutPageProps {
 }
 
 const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
-  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card'>('pix');
+  const [paymentMethod] = useState<'pix'>('pix');
   const [showQRCode, setShowQRCode] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -276,22 +276,14 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
 
                 {/* Payment */}
                 <h3 className="font-semibold text-foreground mb-4">Forma de Pagamento</h3>
-                <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="mb-6">
                   <Button
-                    variant={paymentMethod === 'pix' ? 'gold' : 'outline'}
-                    className="h-16"
-                    onClick={() => setPaymentMethod('pix')}
+                    variant="gold"
+                    className="h-16 w-full"
+                    disabled
                   >
                     <QrCode className="w-5 h-5 mr-2" />
                     PIX
-                  </Button>
-                  <Button
-                    variant={paymentMethod === 'card' ? 'gold' : 'outline'}
-                    className="h-16"
-                    onClick={() => setPaymentMethod('card')}
-                  >
-                    <CreditCard className="w-5 h-5 mr-2" />
-                    Cartão
                   </Button>
                 </div>
 
@@ -344,28 +336,6 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
                   </motion.div>
                 )}
 
-                {paymentMethod === 'card' && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="cardNumber">Número do Cartão</Label>
-                      <Input id="cardNumber" placeholder="0000 0000 0000 0000" className="mt-1" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="expiry">Validade</Label>
-                        <Input id="expiry" placeholder="MM/AA" className="mt-1" />
-                      </div>
-                      <div>
-                        <Label htmlFor="cvv">CVV</Label>
-                        <Input id="cvv" placeholder="123" className="mt-1" />
-                      </div>
-                    </div>
-                    <Button variant="gold" size="lg" className="w-full">
-                      <CreditCard className="w-5 h-5 mr-2" />
-                      Finalizar Pagamento
-                    </Button>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </motion.div>
