@@ -12,6 +12,12 @@ interface PixRequest {
   customerDocument: string;
   customerPhone: string;
   orderId: string;
+  products?: Array<{
+    id: string;
+    name: string;
+    quantity: number;
+    price: number;
+  }>;
 }
 
 serve(async (req) => {
@@ -27,85 +33,87 @@ serve(async (req) => {
       customerDocument, 
       customerPhone,
       orderId,
+      products,
     }: PixRequest = await req.json();
 
-    console.log('Creating PIX QR Code with AbacatePay:', { amount, customerName, customerEmail, orderId });
+    console.log('Creating PIX QR Code with EvolutPay:', { amount, customerName, customerEmail, orderId });
 
-    // AbacatePay requires minimum of 100 cents (R$1.00)
-    const amountInCents = Math.round(amount * 100);
-    if (amountInCents < 100) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Valor mínimo para pagamento PIX é R$1,00',
-          details: { minAmount: 1.00, currentAmount: amount }
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+    const publicKey = Deno.env.get('EVOLUTPAY_PUBLIC_KEY');
+    const secretKey = Deno.env.get('EVOLUTPAY_SECRET_KEY');
+
+    if (!publicKey || !secretKey) {
+      throw new Error('EvolutPay API keys not configured');
     }
 
-    const apiToken = Deno.env.get('ABACATEPAY_API_TOKEN');
-
-    if (!apiToken) {
-      throw new Error('AbacatePay API token not configured');
-    }
-
-    const payload = {
-      amount: amountInCents,
-      expiresIn: 3600, // 1 hour expiration
-      description: `Pedido Bauducco - ${orderId}`,
-      customer: {
+    const payload: Record<string, unknown> = {
+      identifier: orderId,
+      amount: amount,
+      client: {
         name: customerName,
-        cellphone: customerPhone,
         email: customerEmail,
-        taxId: customerDocument,
+        phone: customerPhone,
+        document: customerDocument,
       },
       metadata: {
-        externalId: orderId,
+        source: 'bauducco-loja',
+        orderId: orderId,
       },
     };
 
-    console.log('Sending request to AbacatePay:', JSON.stringify(payload));
+    // Add products if provided
+    if (products && products.length > 0) {
+      payload.products = products.map(p => ({
+        id: p.id,
+        name: p.name,
+        quantity: p.quantity,
+        price: p.price,
+        physical: true,
+      }));
+    }
 
-    const response = await fetch('https://api.abacatepay.com/v1/pixQrCode/create', {
+    console.log('Sending request to EvolutPay:', JSON.stringify(payload));
+
+    const response = await fetch('https://app.evolutpay.com/api/v1/gateway/pix/receive', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiToken}`,
+        'x-public-key': publicKey,
+        'x-secret-key': secretKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
     });
 
     const data = await response.json();
-    console.log('Response from AbacatePay:', JSON.stringify(data));
+    console.log('Response from EvolutPay:', JSON.stringify(data));
 
-    if (!response.ok || data.error) {
-      console.error('AbacatePay error:', data);
+    if (!response.ok || data.errorCode) {
+      console.error('EvolutPay error:', data);
       return new Response(
         JSON.stringify({ 
-          error: 'Failed to create PIX QR Code', 
+          error: data.message || 'Failed to create PIX QR Code', 
           details: data
         }),
         { 
-          status: 400, 
+          status: response.status || 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
     }
 
-    // Extract PIX data from AbacatePay response
-    const pixCode = data.data?.brCode;
-    const pixQrCode = data.data?.brCodeBase64;
+    // Extract PIX data from EvolutPay response
+    const pixCode = data.pix?.code;
+    const pixQrCode = data.pix?.base64;
+    const pixImage = data.pix?.image;
 
     return new Response(
       JSON.stringify({
         success: true,
         pixCode: pixCode,
         pixQrCode: pixQrCode,
-        transactionId: data.data?.id,
-        expiresAt: data.data?.expiresAt,
+        pixImage: pixImage,
+        transactionId: data.transactionId,
+        status: data.status,
+        orderId: data.order?.id,
         raw: data,
       }),
       { 
