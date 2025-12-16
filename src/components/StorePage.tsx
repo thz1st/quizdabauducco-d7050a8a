@@ -121,7 +121,7 @@ const products: Product[] = [
     name: "Lata Chocottone 750g",
     description: "Chocottone tradicional com gotas de chocolate em lata colecionável",
     originalPrice: 99.90,
-    discountedPrice: 12.90,
+    discountedPrice: 54.95,
     rating: 5,
     reviews: 932,
     image: lataChocottone,
