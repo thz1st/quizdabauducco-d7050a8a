@@ -165,11 +165,11 @@ const products: Product[] = [
     name: "Biscoito Recheado Morango 140g",
     description: "Biscoito sabor chocolate com recheio sabor morango",
     originalPrice: 9.90,
-    discountedPrice: 0.99,
+    discountedPrice: 1.00,
     rating: 5,
     reviews: 1823,
     image: biscoitoMorango,
-    badge: "99% OFF"
+    badge: "90% OFF"
   },
   {
     id: 12,
@@ -209,22 +209,22 @@ const products: Product[] = [
     name: "Biscoito Recheado Baunilha 140g",
     description: "Biscoito sabor chocolate com recheio sabor baunilha",
     originalPrice: 9.90,
-    discountedPrice: 0.99,
+    discountedPrice: 1.00,
     rating: 5,
     reviews: 1567,
     image: biscoitoBaunilha,
-    badge: "99% OFF"
+    badge: "90% OFF"
   },
   {
     id: 16,
     name: "Choco Biscuit Meio Amargo 80g",
     description: "Biscoito e barra sabor chocolate meio amargo - Nº1 do Brasil",
     originalPrice: 9.90,
-    discountedPrice: 0.99,
+    discountedPrice: 1.00,
     rating: 5,
     reviews: 2134,
     image: chocobiscuitMeioAmargo,
-    badge: "99% OFF"
+    badge: "90% OFF"
   },
   {
     id: 17,
