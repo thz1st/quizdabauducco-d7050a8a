@@ -10,123 +10,95 @@ interface PixRequest {
   customerName: string;
   customerEmail: string;
   customerDocument: string;
+  customerPhone: string;
   orderId: string;
+  street?: string;
+  number?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { amount, customerName, customerEmail, customerDocument, orderId }: PixRequest = await req.json();
+    const { 
+      amount, 
+      customerName, 
+      customerEmail, 
+      customerDocument, 
+      customerPhone,
+      orderId,
+      street,
+      number,
+      neighborhood,
+      city,
+      state,
+      zipCode
+    }: PixRequest = await req.json();
 
-    console.log('Creating PIX payment:', { amount, customerName, customerEmail, orderId });
+    console.log('Creating PIX payment with NitroPay:', { amount, customerName, customerEmail, orderId });
 
-    const secretKey = Deno.env.get('GATEWAY_SECRET_KEY');
-    const companyId = Deno.env.get('GATEWAY_COMPANY_ID');
-    const globalSecretKey = Deno.env.get('GATEWAY_GLOBAL_SECRET_KEY');
-    const globalClientId = Deno.env.get('GATEWAY_GLOBAL_CLIENT_ID');
+    const apiToken = Deno.env.get('NITROPAY_API_TOKEN');
 
-    if (!secretKey || !companyId) {
-      throw new Error('Gateway credentials not configured');
+    if (!apiToken) {
+      throw new Error('NitroPay API token not configured');
     }
 
-    // Try different endpoint patterns common in Brazilian payment gateways
-    const apiBaseUrl = 'https://api.ghostspaysv2.com';
-    
-    // Attempt 1: Common endpoint pattern
     const payload = {
       amount: Math.round(amount * 100), // Convert to cents
-      currency: 'BRL',
       payment_method: 'pix',
       customer: {
         name: customerName,
         email: customerEmail,
-        document: customerDocument.replace(/\D/g, ''), // Remove non-digits
+        phone_number: customerPhone?.replace(/\D/g, '') || '',
+        document: customerDocument.replace(/\D/g, ''),
+        street_name: street || 'N/A',
+        number: number || 'S/N',
+        complement: '',
+        neighborhood: neighborhood || 'N/A',
+        city: city || 'N/A',
+        state: state || 'SP',
+        zip_code: zipCode?.replace(/\D/g, '') || '00000000'
       },
-      external_id: orderId,
-      company_id: companyId,
+      cart: [
+        {
+          product_hash: orderId,
+          title: 'Pedido Bauducco',
+          cover: null,
+          price: Math.round(amount * 100),
+          quantity: 1,
+          operation_type: 1,
+          tangible: true
+        }
+      ],
+      expire_in_days: 1
     };
 
-    console.log('Sending request to GhostsPay:', JSON.stringify(payload));
+    console.log('Sending request to NitroPay:', JSON.stringify(payload));
 
-    // Try with different authentication methods
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${secretKey}`,
-      'X-Secret-Key': secretKey!,
-      'X-Company-Id': companyId!,
-      'X-Global-Secret-Key': globalSecretKey || '',
-      'X-Global-Client-Id': globalClientId || '',
-    };
-
-    // Try /pix/create endpoint
-    let response = await fetch(`${apiBaseUrl}/pix/create`, {
+    const response = await fetch(`https://api.nitropagamentos.com/api/public/v1/transactions?api_token=${apiToken}`, {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
       body: JSON.stringify(payload),
     });
 
-    let data = await response.json();
-    console.log('Response from /pix/create:', JSON.stringify(data));
-
-    // If first endpoint fails, try /v1/pix
-    if (data.error || !response.ok) {
-      console.log('Trying /v1/pix endpoint...');
-      response = await fetch(`${apiBaseUrl}/v1/pix`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
-      data = await response.json();
-      console.log('Response from /v1/pix:', JSON.stringify(data));
-    }
-
-    // If still fails, try /transactions endpoint
-    if (data.error || !response.ok) {
-      console.log('Trying /transactions endpoint...');
-      response = await fetch(`${apiBaseUrl}/transactions`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          ...payload,
-          type: 'pix',
-        }),
-      });
-      data = await response.json();
-      console.log('Response from /transactions:', JSON.stringify(data));
-    }
-
-    // If still fails, try /charges endpoint
-    if (data.error || !response.ok) {
-      console.log('Trying /charges endpoint...');
-      response = await fetch(`${apiBaseUrl}/charges`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          amount: Math.round(amount * 100),
-          payment_method: 'pix',
-          customer: {
-            name: customerName,
-            email: customerEmail,
-            tax_id: customerDocument.replace(/\D/g, ''),
-          },
-          order_id: orderId,
-        }),
-      });
-      data = await response.json();
-      console.log('Response from /charges:', JSON.stringify(data));
-    }
+    const data = await response.json();
+    console.log('Response from NitroPay:', JSON.stringify(data));
 
     if (!response.ok) {
-      console.error('All endpoints failed:', data);
+      console.error('NitroPay error:', data);
       return new Response(
         JSON.stringify({ 
           error: 'Failed to create PIX payment', 
-          details: data,
-          message: 'Por favor, verifique a documentação da API do GhostsPay para os endpoints corretos'
+          details: data
         }),
         { 
           status: 400, 
@@ -135,14 +107,17 @@ serve(async (req) => {
       );
     }
 
-    // Return the PIX data
+    // Extract PIX data from NitroPay response
+    const pixCode = data.pix?.qrcode || data.pix?.code || data.qrcode || data.pix_qrcode;
+    const pixQrCode = data.pix?.qrcode_image || data.pix?.qr_code_base64 || data.qrcode_image;
+
     return new Response(
       JSON.stringify({
         success: true,
-        pixCode: data.pix_code || data.qr_code || data.qrcode || data.code || data.pix?.code,
-        pixQrCode: data.pix_qr_code || data.qr_code_base64 || data.qrcode_base64 || data.pix?.qr_code,
-        transactionId: data.transaction_id || data.id || data.charge_id,
-        expiresAt: data.expires_at || data.expiration,
+        pixCode: pixCode,
+        pixQrCode: pixQrCode,
+        transactionId: data.id || data.transaction_id,
+        expiresAt: data.expires_at || data.pix?.expires_at,
         raw: data,
       }),
       { 

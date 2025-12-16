@@ -74,7 +74,14 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
           customerName: formData.name,
           customerEmail: formData.email,
           customerDocument: formData.cpf,
+          customerPhone: formData.phone,
           orderId: orderId,
+          street: formData.street,
+          number: formData.number,
+          neighborhood: formData.neighborhood,
+          city: formData.city,
+          state: 'SP',
+          zipCode: formData.cep,
         },
       });
 
