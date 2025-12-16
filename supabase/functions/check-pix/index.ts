@@ -22,21 +22,23 @@ serve(async (req) => {
       );
     }
 
-    const apiToken = Deno.env.get('ABACATEPAY_API_TOKEN');
+    const publicKey = Deno.env.get('EVOLUTPAY_PUBLIC_KEY');
+    const secretKey = Deno.env.get('EVOLUTPAY_SECRET_KEY');
 
-    if (!apiToken) {
-      throw new Error('AbacatePay API token not configured');
+    if (!publicKey || !secretKey) {
+      throw new Error('EvolutPay API keys not configured');
     }
 
-    const response = await fetch(`https://api.abacatepay.com/v1/pixQrCode/check?id=${transactionId}`, {
+    const response = await fetch(`https://app.evolutpay.com/api/v1/gateway/transactions?id=${transactionId}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${apiToken}`,
+        'x-public-key': publicKey,
+        'x-secret-key': secretKey,
       },
     });
 
     const data = await response.json();
-    console.log('AbacatePay check response:', JSON.stringify(data));
+    console.log('EvolutPay check response:', JSON.stringify(data));
 
     if (!response.ok) {
       return new Response(
@@ -45,11 +47,17 @@ serve(async (req) => {
       );
     }
 
+    // EvolutPay status: PENDING, COMPLETED, FAILED, REFUNDED, CHARGED_BACK
+    const isPaid = data.status === 'COMPLETED';
+
     return new Response(
       JSON.stringify({
-        status: data.data?.status,
-        expiresAt: data.data?.expiresAt,
-        isPaid: data.data?.status !== 'PENDING',
+        status: data.status,
+        payedAt: data.payedAt,
+        isPaid: isPaid,
+        paymentMethod: data.paymentMethod,
+        amount: data.amount,
+        raw: data,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
