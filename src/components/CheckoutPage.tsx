@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CreditCard, QrCode, Copy, Check, ShieldCheck, Truck } from 'lucide-react';
+import { ArrowLeft, CreditCard, QrCode, Copy, Check, ShieldCheck, Truck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BauduccoLogo } from './Decorations';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import type { Product } from './StorePage';
 import type { CartItem } from './FloatingCart';
 
@@ -18,8 +20,28 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card'>('pix');
   const [showQRCode, setShowQRCode] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [pixCode, setPixCode] = useState('');
+  const [pixQrCode, setPixQrCode] = useState('');
+  const { toast } = useToast();
 
-  const pixCode = "00020126580014br.gov.bcb.pix0136a1b2c3d4-e5f6-7890-abcd-ef1234567890520400005303986540512.905802BR5924BAUDUCCO NATAL PROMO6009SAO PAULO62070503***6304ABCD";
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    cpf: '',
+    phone: '',
+    cep: '',
+    street: '',
+    number: '',
+    neighborhood: '',
+    city: '',
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({ ...prev, [id]: value }));
+  };
 
   const handleCopyPix = () => {
     navigator.clipboard.writeText(pixCode);
@@ -27,8 +49,73 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
     setTimeout(() => setCopied(false), 3000);
   };
 
-  const handleGenerateQR = () => {
-    setShowQRCode(true);
+  const handleGenerateQR = async () => {
+    // Validate form
+    if (!formData.name || !formData.email || !formData.cpf) {
+      toast({
+        title: "Preencha os dados",
+        description: "Por favor, preencha nome, email e CPF para gerar o PIX.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const total = cartItems.reduce((acc, item) => acc + item.product.discountedPrice * item.quantity, 0);
+      const orderId = `order_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+      console.log('Generating PIX for order:', orderId, 'Amount:', total);
+
+      const { data, error } = await supabase.functions.invoke('create-pix', {
+        body: {
+          amount: total,
+          customerName: formData.name,
+          customerEmail: formData.email,
+          customerDocument: formData.cpf,
+          orderId: orderId,
+        },
+      });
+
+      console.log('PIX response:', data, error);
+
+      if (error) {
+        throw new Error(error.message || 'Erro ao gerar PIX');
+      }
+
+      if (data?.error) {
+        console.error('API Error:', data);
+        toast({
+          title: "Erro na API",
+          description: data.message || "Verifique as credenciais do gateway.",
+          variant: "destructive",
+        });
+        // Show QR anyway with fallback for testing
+        setPixCode(data.details?.message || 'Erro ao gerar código PIX');
+        setShowQRCode(true);
+        return;
+      }
+
+      setPixCode(data.pixCode || '');
+      setPixQrCode(data.pixQrCode || '');
+      setShowQRCode(true);
+
+      toast({
+        title: "PIX gerado!",
+        description: "Escaneie o QR Code ou copie o código para pagar.",
+      });
+
+    } catch (error) {
+      console.error('Error generating PIX:', error);
+      toast({
+        title: "Erro ao gerar PIX",
+        description: error instanceof Error ? error.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -132,21 +219,21 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="name">Nome Completo</Label>
-                      <Input id="name" placeholder="Seu nome completo" className="mt-1" />
+                      <Input id="name" placeholder="Seu nome completo" className="mt-1" value={formData.name} onChange={handleInputChange} />
                     </div>
                     <div>
                       <Label htmlFor="email">E-mail</Label>
-                      <Input id="email" type="email" placeholder="seu@email.com" className="mt-1" />
+                      <Input id="email" type="email" placeholder="seu@email.com" className="mt-1" value={formData.email} onChange={handleInputChange} />
                     </div>
                   </div>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="cpf">CPF</Label>
-                      <Input id="cpf" placeholder="000.000.000-00" className="mt-1" />
+                      <Input id="cpf" placeholder="000.000.000-00" className="mt-1" value={formData.cpf} onChange={handleInputChange} />
                     </div>
                     <div>
                       <Label htmlFor="phone">Telefone</Label>
-                      <Input id="phone" placeholder="(00) 00000-0000" className="mt-1" />
+                      <Input id="phone" placeholder="(00) 00000-0000" className="mt-1" value={formData.phone} onChange={handleInputChange} />
                     </div>
                   </div>
                 </div>
@@ -157,25 +244,25 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
                   <div className="grid md:grid-cols-3 gap-4">
                     <div>
                       <Label htmlFor="cep">CEP</Label>
-                      <Input id="cep" placeholder="00000-000" className="mt-1" />
+                      <Input id="cep" placeholder="00000-000" className="mt-1" value={formData.cep} onChange={handleInputChange} />
                     </div>
                     <div className="md:col-span-2">
                       <Label htmlFor="street">Rua</Label>
-                      <Input id="street" placeholder="Nome da rua" className="mt-1" />
+                      <Input id="street" placeholder="Nome da rua" className="mt-1" value={formData.street} onChange={handleInputChange} />
                     </div>
                   </div>
                   <div className="grid md:grid-cols-3 gap-4">
                     <div>
                       <Label htmlFor="number">Número</Label>
-                      <Input id="number" placeholder="123" className="mt-1" />
+                      <Input id="number" placeholder="123" className="mt-1" value={formData.number} onChange={handleInputChange} />
                     </div>
                     <div>
                       <Label htmlFor="neighborhood">Bairro</Label>
-                      <Input id="neighborhood" placeholder="Seu bairro" className="mt-1" />
+                      <Input id="neighborhood" placeholder="Seu bairro" className="mt-1" value={formData.neighborhood} onChange={handleInputChange} />
                     </div>
                     <div>
                       <Label htmlFor="city">Cidade</Label>
-                      <Input id="city" placeholder="Sua cidade" className="mt-1" />
+                      <Input id="city" placeholder="Sua cidade" className="mt-1" value={formData.city} onChange={handleInputChange} />
                     </div>
                   </div>
                 </div>
@@ -202,9 +289,13 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
                 </div>
 
                 {paymentMethod === 'pix' && !showQRCode && (
-                  <Button variant="gold" size="lg" className="w-full" onClick={handleGenerateQR}>
-                    <QrCode className="w-5 h-5 mr-2" />
-                    Gerar QR Code Pix
+                  <Button variant="gold" size="lg" className="w-full" onClick={handleGenerateQR} disabled={loading}>
+                    {loading ? (
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    ) : (
+                      <QrCode className="w-5 h-5 mr-2" />
+                    )}
+                    {loading ? 'Gerando PIX...' : 'Gerar QR Code Pix'}
                   </Button>
                 )}
 
@@ -214,27 +305,29 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                   >
-                    <div className="bg-foreground p-4 rounded-xl inline-block mb-4">
-                      {/* Simulated QR Code */}
-                      <div className="w-48 h-48 grid grid-cols-8 gap-0.5">
-                        {[...Array(64)].map((_, i) => (
-                          <div
-                            key={i}
-                            className={`w-full aspect-square ${Math.random() > 0.5 ? 'bg-coffee-dark' : 'bg-foreground'}`}
-                          />
-                        ))}
+                    {pixQrCode ? (
+                      <img 
+                        src={pixQrCode} 
+                        alt="QR Code PIX" 
+                        className="w-48 h-48 mx-auto mb-4 rounded-xl"
+                      />
+                    ) : (
+                      <div className="bg-foreground p-4 rounded-xl inline-block mb-4">
+                        <div className="w-48 h-48 flex items-center justify-center text-background text-sm">
+                          QR Code não disponível
+                        </div>
                       </div>
-                    </div>
+                    )}
                     <p className="text-muted-foreground text-sm mb-4">
                       Escaneie o QR Code ou copie o código abaixo
                     </p>
                     <div className="flex gap-2">
                       <Input
-                        value={pixCode.slice(0, 50) + '...'}
+                        value={pixCode ? (pixCode.length > 50 ? pixCode.slice(0, 50) + '...' : pixCode) : 'Código não disponível'}
                         readOnly
                         className="text-xs"
                       />
-                      <Button variant="gold-outline" onClick={handleCopyPix}>
+                      <Button variant="gold-outline" onClick={handleCopyPix} disabled={!pixCode}>
                         {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                       </Button>
                     </div>
