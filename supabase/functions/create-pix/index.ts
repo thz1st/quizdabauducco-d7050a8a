@@ -29,7 +29,7 @@ serve(async (req) => {
       orderId,
     }: PixRequest = await req.json();
 
-    console.log('Creating PIX payment with AbacatePay:', { amount, customerName, customerEmail, orderId });
+    console.log('Creating PIX QR Code with AbacatePay:', { amount, customerName, customerEmail, orderId });
 
     const apiToken = Deno.env.get('ABACATEPAY_API_TOKEN');
 
@@ -38,30 +38,23 @@ serve(async (req) => {
     }
 
     const payload = {
-      frequency: "ONE_TIME",
-      methods: ["PIX"],
-      products: [
-        {
-          externalId: orderId,
-          name: "Pedido Bauducco",
-          description: "Produtos Bauducco",
-          quantity: 1,
-          price: Math.round(amount * 100), // Convert to cents
-        }
-      ],
-      returnUrl: "https://bauducco.com.br",
-      completionUrl: "https://bauducco.com.br/obrigado",
+      amount: Math.round(amount * 100), // Convert to cents
+      expiresIn: 3600, // 1 hour expiration
+      description: `Pedido Bauducco - ${orderId}`,
       customer: {
         name: customerName,
         cellphone: customerPhone,
         email: customerEmail,
         taxId: customerDocument,
       },
+      metadata: {
+        externalId: orderId,
+      },
     };
 
     console.log('Sending request to AbacatePay:', JSON.stringify(payload));
 
-    const response = await fetch('https://api.abacatepay.com/v1/billing/create', {
+    const response = await fetch('https://api.abacatepay.com/v1/pixQrCode/create', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiToken}`,
@@ -73,11 +66,11 @@ serve(async (req) => {
     const data = await response.json();
     console.log('Response from AbacatePay:', JSON.stringify(data));
 
-    if (!response.ok) {
+    if (!response.ok || data.error) {
       console.error('AbacatePay error:', data);
       return new Response(
         JSON.stringify({ 
-          error: 'Failed to create PIX payment', 
+          error: 'Failed to create PIX QR Code', 
           details: data
         }),
         { 
@@ -88,16 +81,16 @@ serve(async (req) => {
     }
 
     // Extract PIX data from AbacatePay response
-    const pixCode = data.data?.pix?.qrcode || data.pix?.qrcode;
-    const pixQrCode = data.data?.pix?.qrcodeBase64 || data.pix?.qrcodeBase64;
+    const pixCode = data.data?.brCode;
+    const pixQrCode = data.data?.brCodeBase64;
 
     return new Response(
       JSON.stringify({
         success: true,
         pixCode: pixCode,
         pixQrCode: pixQrCode,
-        transactionId: data.data?.id || data.id,
-        url: data.data?.url || data.url,
+        transactionId: data.data?.id,
+        expiresAt: data.data?.expiresAt,
         raw: data,
       }),
       { 
