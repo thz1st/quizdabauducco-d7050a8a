@@ -31,6 +31,21 @@ serve(async (req) => {
 
     console.log('Creating PIX QR Code with AbacatePay:', { amount, customerName, customerEmail, orderId });
 
+    // AbacatePay requires minimum of 100 cents (R$1.00)
+    const amountInCents = Math.round(amount * 100);
+    if (amountInCents < 100) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Valor mínimo para pagamento PIX é R$1,00',
+          details: { minAmount: 1.00, currentAmount: amount }
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     const apiToken = Deno.env.get('ABACATEPAY_API_TOKEN');
 
     if (!apiToken) {
@@ -38,7 +53,7 @@ serve(async (req) => {
     }
 
     const payload = {
-      amount: Math.round(amount * 100), // Convert to cents
+      amount: amountInCents,
       expiresIn: 3600, // 1 hour expiration
       description: `Pedido Bauducco - ${orderId}`,
       customer: {
