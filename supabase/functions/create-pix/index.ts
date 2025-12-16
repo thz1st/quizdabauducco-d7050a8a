@@ -67,21 +67,23 @@ serve(async (req) => {
       document: customerDocument,
     };
 
-    // Add address if provided
-    if (street || city || state || zipCode) {
-      // Clean zipCode - remove non-numeric characters
-      const cleanZipCode = zipCode ? zipCode.replace(/\D/g, '') : '';
-      
+    // Add address only if we have a valid 8-digit zipCode
+    const cleanZipCode = zipCode ? zipCode.replace(/\D/g, '') : '';
+    
+    if (cleanZipCode.length === 8) {
       clientData.address = {
         zipCode: cleanZipCode,
         country: 'BR',
-        state: state || '',
+        state: state || 'SP',
         city: city || '',
         neighborhood: neighborhood || '',
         street: street || '',
         number: number || '',
         complement: complement || '',
       };
+      console.log('Including address with zipCode:', cleanZipCode);
+    } else {
+      console.log('Skipping address - invalid zipCode:', cleanZipCode);
     }
 
     const payload: Record<string, unknown> = {
