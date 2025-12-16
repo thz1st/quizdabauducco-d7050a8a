@@ -2,3 +2,6 @@ project_id = "eudnclmbrsebofrwkqxy"
 
 [functions.create-pix]
 verify_jwt = false
+
+[functions.lookup-cep]
+verify_jwt = false
