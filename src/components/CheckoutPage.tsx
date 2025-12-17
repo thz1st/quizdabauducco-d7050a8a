@@ -108,6 +108,10 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
     }
 
     setLoading(true);
+    setShowQRCode(false);
+    setPixCode('');
+    setPixQrCode('');
+    setTransactionId('');
 
     try {
       const total = cartItems.reduce((acc, item) => acc + item.product.discountedPrice * item.quantity, 0);
@@ -115,40 +119,55 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
 
       console.log('Generating PIX for order:', orderId, 'Amount:', total);
 
-      const { data, error } = await supabase.functions.invoke('create-pix', {
-        body: {
-          amount: total,
-          customerName: formData.name,
-          customerEmail: formData.email,
-          customerDocument: formData.cpf,
-          customerPhone: formData.phone,
-          orderId: orderId,
-          street: formData.street,
-          number: formData.number,
-          neighborhood: formData.neighborhood,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.cep,
-        },
-      });
+      let data, error;
+      try {
+        const response = await supabase.functions.invoke('create-pix', {
+          body: {
+            amount: total,
+            customerName: formData.name,
+            customerEmail: formData.email,
+            customerDocument: formData.cpf,
+            customerPhone: formData.phone,
+            orderId: orderId,
+            street: formData.street,
+            number: formData.number,
+            neighborhood: formData.neighborhood,
+            city: formData.city,
+            state: formData.state,
+            zipCode: formData.cep,
+          },
+        });
+        data = response.data;
+        error = response.error;
+      } catch (fetchError) {
+        console.error('Network/CORS error:', fetchError);
+        throw new Error('Erro de conexão. Verifique sua internet e tente novamente.');
+      }
 
       console.log('PIX response:', data, error);
 
       if (error) {
+        console.error('Supabase error:', error);
         throw new Error(error.message || 'Erro ao gerar PIX');
       }
 
-      if (data?.error) {
+      if (!data) {
+        throw new Error('Resposta vazia do servidor');
+      }
+
+      if (data.error) {
         console.error('API Error:', data);
         toast({
           title: "Erro na API",
-          description: data.message || "Verifique as credenciais do gateway.",
+          description: data.error || "Verifique os dados informados.",
           variant: "destructive",
         });
-        // Show QR anyway with fallback for testing
-        setPixCode(data.details?.message || 'Erro ao gerar código PIX');
-        setShowQRCode(true);
+        setLoading(false);
         return;
+      }
+
+      if (!data.pixCode && !data.pixQrCode) {
+        throw new Error('PIX não foi gerado corretamente');
       }
 
       setPixCode(data.pixCode || '');
@@ -168,6 +187,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
         description: error instanceof Error ? error.message : "Tente novamente.",
         variant: "destructive",
       });
+      setShowQRCode(false);
     } finally {
       setLoading(false);
     }
