@@ -99,17 +99,21 @@ serve(async (req) => {
       document: customerDocument,
     };
 
-    // Add address only if we have a valid 8-digit zipCode
+    // Add address only if we have a valid 8-digit zipCode AND a valid UF (2-letter state)
     const cleanZipCode = zipCode ? zipCode.replace(/\D/g, '') : '';
     const formattedZipCode = cleanZipCode.length === 8
       ? `${cleanZipCode.slice(0, 5)}-${cleanZipCode.slice(5)}`
       : '';
 
-    if (formattedZipCode) {
+    const normalizedState = (state || '').trim().toUpperCase();
+    const hasValidUF = /^[A-Z]{2}$/.test(normalizedState);
+
+    // If UF is missing/invalid, omit address entirely to avoid gateway validation errors.
+    if (formattedZipCode && hasValidUF) {
       clientData.address = {
         zipCode: formattedZipCode,
         country: 'BR',
-        state: state || '',
+        state: normalizedState,
         city: city || '',
         neighborhood: neighborhood || '',
         street: street || '',
