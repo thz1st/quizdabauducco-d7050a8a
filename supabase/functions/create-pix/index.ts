@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const ALLOWED_ORIGINS = [
+  'https://quizdabauducco.lovable.app',
   'https://id-preview--d4b9c669-4415-4150-aa6c-df5f4a7b5e95.lovable.app',
   'https://d4b9c669-4415-4150-aa6c-df5f4a7b5e95.lovableproject.com',
   'http://localhost:5173',
