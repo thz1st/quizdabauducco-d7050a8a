@@ -152,7 +152,7 @@ serve(async (req) => {
     const data = await response.json();
 
     if (!response.ok || data.errorCode) {
-      console.error('Payment gateway error:', data.errorCode, data.message);
+      console.error('Payment gateway error:', data.errorCode, data.message, JSON.stringify(data.details || data));
       
       // Map specific errors to user-friendly messages
       let userMessage = 'Erro ao gerar QR Code PIX. Tente novamente.';
@@ -160,6 +160,8 @@ serve(async (req) => {
         userMessage = 'O valor mínimo para pagamento via PIX é de R$ 2,00';
       } else if (data.message?.includes('documento') || data.message?.includes('CPF')) {
         userMessage = 'CPF inválido. Verifique os dados informados.';
+      } else if (data.details?.some?.((d: { field: string }) => d.field?.includes('state'))) {
+        userMessage = 'Estado inválido. Verifique o CEP informado.';
       }
       
       return new Response(
