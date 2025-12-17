@@ -9,11 +9,14 @@ const ALLOWED_ORIGINS = [
 ];
 
 function getCorsHeaders(origin: string | null) {
-  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  // Echo the request origin so the browser can read error responses,
+  // but we'll still block non-allowed origins with a 403 below.
+  const headerOrigin = origin ?? ALLOWED_ORIGINS[0];
   return {
-    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Origin': headerOrigin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Credentials': 'true',
+    'Vary': 'Origin',
   };
 }
 
@@ -42,9 +45,23 @@ interface PixRequest {
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
+  const isAllowedOrigin = !!(origin && ALLOWED_ORIGINS.includes(origin));
+
+  console.log('create-pix origin:', origin, 'allowed:', isAllowedOrigin);
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // If the site is opened from an unapproved domain, return a readable 403 (instead of a CORS-blocked network error).
+  if (origin && !isAllowedOrigin) {
+    console.warn('Blocked create-pix request from origin:', origin);
+    return new Response(
+      JSON.stringify({
+        error: 'Domínio não autorizado para gerar PIX. Verifique se você está no domínio correto.',
+      }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   }
 
   try {
