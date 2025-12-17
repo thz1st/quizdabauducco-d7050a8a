@@ -1,9 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = [
+  'https://id-preview--d4b9c669-4415-4150-aa6c-df5f4a7b5e95.lovable.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+
+function getCorsHeaders(origin: string | null) {
+  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Credentials': 'true',
+  };
+}
 
 interface PixRequest {
   amount: number;
@@ -28,6 +38,9 @@ interface PixRequest {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -50,9 +63,9 @@ serve(async (req) => {
       products,
     }: PixRequest = await req.json();
 
-    console.log('Creating PIX QR Code with EvolutPay:', { amount, customerName, customerEmail, orderId });
+    console.log('Processing PIX request for order:', orderId);
 
-    // EvolutPay requires minimum R$2.00 (200 centavos)
+    // EvolutPay requires minimum R$2.00
     if (amount < 2) {
       return new Response(
         JSON.stringify({ 
@@ -70,7 +83,11 @@ serve(async (req) => {
     const secretKey = Deno.env.get('EVOLUTPAY_SECRET_KEY');
 
     if (!publicKey || !secretKey) {
-      throw new Error('EvolutPay API keys not configured');
+      console.error('Payment gateway not configured');
+      return new Response(
+        JSON.stringify({ error: 'Serviço de pagamento indisponível' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Build client object with address
@@ -98,9 +115,6 @@ serve(async (req) => {
         number: number || '',
         complement: complement || '',
       };
-      console.log('Including address with zipCode:', formattedZipCode);
-    } else {
-      console.log('Skipping address - invalid zipCode:', zipCode);
     }
 
     const payload: Record<string, unknown> = {
@@ -124,8 +138,6 @@ serve(async (req) => {
       }));
     }
 
-    console.log('Sending request to EvolutPay:', JSON.stringify(payload));
-
     const response = await fetch('https://app.evolutpay.com/api/v1/gateway/pix/receive', {
       method: 'POST',
       headers: {
@@ -137,23 +149,25 @@ serve(async (req) => {
     });
 
     const data = await response.json();
-    console.log('Response from EvolutPay:', JSON.stringify(data));
 
     if (!response.ok || data.errorCode) {
-      console.error('EvolutPay error:', data);
+      console.error('Payment gateway error:', data.errorCode, data.message);
+      
+      // Map specific errors to user-friendly messages
+      let userMessage = 'Erro ao gerar QR Code PIX. Tente novamente.';
+      if (data.message?.includes('mínimo')) {
+        userMessage = 'O valor mínimo para pagamento via PIX é de R$ 2,00';
+      } else if (data.message?.includes('documento') || data.message?.includes('CPF')) {
+        userMessage = 'CPF inválido. Verifique os dados informados.';
+      }
+      
       return new Response(
-        JSON.stringify({ 
-          error: data.message || 'Failed to create PIX QR Code', 
-          details: data
-        }),
-        { 
-          status: response.status || 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({ error: userMessage }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Extract PIX data from EvolutPay response
+    // Extract only necessary PIX data
     const pixCode = data.pix?.code;
     const pixQrCode = data.pix?.base64;
     const pixImage = data.pix?.image;
@@ -167,7 +181,6 @@ serve(async (req) => {
         transactionId: data.transactionId,
         status: data.status,
         orderId: data.order?.id,
-        raw: data,
       }),
       { 
         status: 200, 
@@ -176,14 +189,10 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error creating PIX:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Internal error processing PIX:', error);
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ error: 'Erro ao processar pagamento. Tente novamente.' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
