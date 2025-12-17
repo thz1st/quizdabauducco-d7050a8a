@@ -52,6 +52,20 @@ serve(async (req) => {
 
     console.log('Creating PIX QR Code with EvolutPay:', { amount, customerName, customerEmail, orderId });
 
+    // EvolutPay requires minimum R$2.00 (200 centavos)
+    if (amount < 2) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'O valor mínimo para pagamento via PIX é de R$ 2,00',
+          code: 'MINIMUM_AMOUNT_ERROR'
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     const publicKey = Deno.env.get('EVOLUTPAY_PUBLIC_KEY');
     const secretKey = Deno.env.get('EVOLUTPAY_SECRET_KEY');
 
