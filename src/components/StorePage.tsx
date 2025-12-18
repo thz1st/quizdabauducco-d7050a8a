@@ -331,11 +331,10 @@ const ProductCard = ({ product, onBuy }: { product: Product; onBuy: () => void }
           
           <Button 
             variant="gold-outline" 
-            size="sm" 
-            className="w-full"
+            className="w-full h-8 px-3 text-xs"
             onClick={onBuy}
           >
-            <ShoppingCart className="w-4 h-4 mr-1" />
+            <ShoppingCart className="w-3 h-3 mr-1" />
             Comprar Agora
           </Button>
         </CardContent>
