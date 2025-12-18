@@ -28,7 +28,7 @@ serve(async (req) => {
   try {
     const { transactionId } = await req.json();
 
-    console.log('Checking payment status for transaction');
+    console.log('Checking payment status for transaction:', transactionId);
 
     if (!transactionId) {
       return new Response(
@@ -48,33 +48,42 @@ serve(async (req) => {
       );
     }
 
-    const response = await fetch(`https://app.evolutpay.com/api/v1/gateway/transactions?id=${transactionId}`, {
+    // Create Basic Auth credentials for new API
+    const credentials = btoa(`${publicKey}:${secretKey}`);
+
+    // New API endpoint to get transaction status
+    const response = await fetch(`https://api.evolutpay.com.br/v1/payment-transaction/${transactionId}`, {
       method: 'GET',
       headers: {
-        'x-public-key': publicKey,
-        'x-secret-key': secretKey,
+        'Authorization': `Basic ${credentials}`,
+        'Accept': 'application/json',
       },
     });
 
     const data = await response.json();
 
+    console.log('Check payment response status:', response.status);
+    console.log('Check payment response data:', JSON.stringify(data, null, 2));
+
     if (!response.ok) {
-      console.error('Payment check failed:', data.errorCode);
+      console.error('Payment check failed:', response.status, JSON.stringify(data));
       return new Response(
         JSON.stringify({ error: 'Não foi possível verificar o pagamento' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // EvolutPay status: PENDING, COMPLETED, FAILED, REFUNDED, CHARGED_BACK
-    const isPaid = data.status === 'COMPLETED';
+    // New API status values may differ - adjust based on actual response
+    // Common statuses: pending, paid, canceled, refunded, etc.
+    const status = data.status?.toLowerCase() || '';
+    const isPaid = status === 'paid' || status === 'completed' || status === 'approved';
 
     return new Response(
       JSON.stringify({
         status: data.status,
-        payedAt: data.payedAt,
+        paidAt: data.paid_at || data.payedAt || null,
         isPaid: isPaid,
-        paymentMethod: data.paymentMethod,
+        paymentMethod: data.payment_method || 'pix',
         amount: data.amount,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -9,8 +9,6 @@ const ALLOWED_ORIGINS = [
 ];
 
 function getCorsHeaders(origin: string | null) {
-  // Echo the request origin so the browser can read error responses,
-  // but we'll still block non-allowed origins with a 403 below.
   const headerOrigin = origin ?? ALLOWED_ORIGINS[0];
   return {
     'Access-Control-Allow-Origin': headerOrigin,
@@ -31,14 +29,12 @@ function isValidCPF(cpfRaw: string) {
 
   const digits = cpf.split('').map((c) => Number(c));
 
-  // 1st check digit
   let sum = 0;
   for (let i = 0; i < 9; i++) sum += digits[i] * (10 - i);
   let mod = (sum * 10) % 11;
   if (mod === 10) mod = 0;
   if (mod !== digits[9]) return false;
 
-  // 2nd check digit
   sum = 0;
   for (let i = 0; i < 10; i++) sum += digits[i] * (11 - i);
   mod = (sum * 10) % 11;
@@ -46,6 +42,11 @@ function isValidCPF(cpfRaw: string) {
   if (mod !== digits[10]) return false;
 
   return true;
+}
+
+// Base64 encode for Basic Auth (Deno compatible)
+function btoa(str: string): string {
+  return btoa(str);
 }
 
 interface PixRequest {
@@ -81,7 +82,6 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // If the site is opened from an unapproved domain, return a readable 403 (instead of a CORS-blocked network error).
   if (origin && !isAllowedOrigin) {
     console.warn('Blocked create-pix request from origin:', origin);
     return new Response(
@@ -110,10 +110,7 @@ serve(async (req) => {
       products,
     }: PixRequest = await req.json();
 
-    console.log('Processing PIX request for order:', orderId);
-
-    // Normalize to 2 decimals to avoid floating-point issues
-    const normalizedAmount = Math.round((amount || 0) * 100) / 100;
+    console.log('Processing PIX request for order:', orderId, 'Amount:', amount);
 
     const publicKey = Deno.env.get('EVOLUTPAY_PUBLIC_KEY');
     const secretKey = Deno.env.get('EVOLUTPAY_SECRET_KEY');
@@ -136,95 +133,116 @@ serve(async (req) => {
       );
     }
 
-    // Build client object with normalized values
-    const clientData: Record<string, unknown> = {
+    // Convert amount to cents (integer)
+    const amountInCents = Math.round((amount || 0) * 100);
+
+    // Format phone with country code
+    const formattedPhone = cleanPhone.length === 11 
+      ? `+55${cleanPhone}` 
+      : cleanPhone.length === 10 
+        ? `+55${cleanPhone}` 
+        : `+55${cleanPhone}`;
+
+    // Build customer object for new API
+    const customer = {
       name: String(customerName || '').trim().slice(0, 120),
       email: String(customerEmail || '').trim().slice(0, 255),
-      phone: cleanPhone,
-      document: cleanDocument,
+      document: {
+        type: "cpf",
+        number: cleanDocument,
+      },
+      phone: formattedPhone,
     };
 
-    // Add address only if we have a valid 8-digit zipCode AND a valid UF (2-letter state)
-    const cleanZipCode = zipCode ? zipCode.replace(/\D/g, '') : '';
-    const formattedZipCode = cleanZipCode.length === 8
-      ? `${cleanZipCode.slice(0, 5)}-${cleanZipCode.slice(5)}`
-      : '';
+    // Build items array from products or create a generic item
+    const items = products && products.length > 0
+      ? products.map(p => ({
+          title: p.name,
+          unit_price: Math.round(p.price * 100), // Convert to cents
+          quantity: p.quantity,
+          tangible: true,
+          external_ref: p.id,
+        }))
+      : [{
+          title: "Pedido Bauducco",
+          unit_price: amountInCents,
+          quantity: 1,
+          tangible: true,
+          external_ref: orderId,
+        }];
 
-    const normalizedState = (state || '').trim().toUpperCase();
-    const hasValidUF = /^[A-Z]{2}$/.test(normalizedState);
-
-    // If UF is missing/invalid, omit address entirely to avoid gateway validation errors.
-    if (formattedZipCode && hasValidUF) {
-      clientData.address = {
-        zipCode: formattedZipCode,
-        country: 'BR',
-        state: normalizedState,
-        city: city || '',
-        neighborhood: neighborhood || '',
-        street: street || '',
-        number: number || '',
-        complement: complement || '',
-      };
-    }
-
-    const payload: Record<string, unknown> = {
-      identifier: orderId,
-      amount: normalizedAmount,
-      client: clientData,
+    // Build the payload for new EvolutPay API
+    const payload = {
+      amount: amountInCents,
+      payment_method: "pix",
+      postback_url: "https://quizdabauducco.lovable.app/webhook", // Required field
+      customer: customer,
+      items: items,
+      pix: {
+        expires_in_days: 1,
+      },
       metadata: {
-        source: 'bauducco-loja',
-        orderId: orderId,
+        provider_name: "Bauducco Store",
+        order_id: orderId,
+        source: "bauducco-loja",
       },
     };
 
-    // Add products if provided
-    if (products && products.length > 0) {
-      payload.products = products.map(p => ({
-        id: p.id,
-        name: p.name,
-        quantity: p.quantity,
-        price: p.price,
-        physical: true,
-      }));
-    }
+    console.log('Sending payload to EvolutPay:', JSON.stringify(payload, null, 2));
 
-    const response = await fetch('https://app.evolutpay.com/api/v1/gateway/pix/receive', {
+    // Create Basic Auth credentials
+    const credentials = btoa(`${publicKey}:${secretKey}`);
+
+    const response = await fetch('https://api.evolutpay.com.br/v1/payment-transaction/create', {
       method: 'POST',
       headers: {
-        'x-public-key': publicKey,
-        'x-secret-key': secretKey,
+        'Authorization': `Basic ${credentials}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify(payload),
     });
 
     const data = await response.json();
 
-    if (!response.ok || data.errorCode) {
-      console.error('Payment gateway error:', data.errorCode, data.message, JSON.stringify(data.details || data));
-      
-      // Map specific errors to user-friendly messages
-      let userMessage = 'Erro ao gerar QR Code PIX. Tente novamente.';
-      const msg = String(data.message || '').toLowerCase();
+    console.log('EvolutPay response status:', response.status);
+    console.log('EvolutPay response data:', JSON.stringify(data, null, 2));
 
-      if (msg.includes('mínimo') || msg.includes('minimum') || msg.includes('below the minimum')) {
-        userMessage = 'O valor do pedido está abaixo do mínimo aceito pelo gateway. Adicione mais itens ao carrinho.';
-      } else if (msg.includes('documento') || msg.includes('cpf')) {
-        userMessage = 'CPF inválido. Verifique os dados informados.';
-      } else if (data.details?.some?.((d: { field: string }) => d.field?.includes('state'))) {
-        userMessage = 'Estado inválido. Verifique o CEP informado.';
+    if (!response.ok) {
+      console.error('Payment gateway error:', response.status, JSON.stringify(data));
+      
+      let userMessage = 'Erro ao gerar QR Code PIX. Tente novamente.';
+      
+      // Try to extract error message from response
+      if (data.message) {
+        const msg = String(data.message).toLowerCase();
+        if (msg.includes('mínimo') || msg.includes('minimum')) {
+          userMessage = 'O valor do pedido está abaixo do mínimo aceito. Adicione mais itens ao carrinho.';
+        } else if (msg.includes('documento') || msg.includes('cpf') || msg.includes('document')) {
+          userMessage = 'CPF inválido. Verifique os dados informados.';
+        } else if (msg.includes('customer')) {
+          userMessage = 'Dados do cliente inválidos. Verifique as informações.';
+        }
+      }
+      
+      if (data.errors && Array.isArray(data.errors)) {
+        console.error('Validation errors:', data.errors);
       }
       
       return new Response(
-        JSON.stringify({ error: userMessage }),
+        JSON.stringify({ error: userMessage, details: data }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Extract only necessary PIX data
-    const pixCode = data.pix?.code;
-    const pixQrCode = data.pix?.base64;
-    const pixImage = data.pix?.image;
+    // Extract PIX data from response
+    // The new API structure may differ - adjust based on actual response
+    const pixCode = data.pix?.qr_code || data.pix?.code || data.qr_code || data.code || '';
+    const pixQrCode = data.pix?.qr_code_base64 || data.pix?.base64 || data.qr_code_base64 || '';
+    const pixImage = data.pix?.qr_code_url || data.pix?.image || data.qr_code_url || '';
+    const transactionId = data.id || data.transaction_id || data.transactionId || '';
+
+    console.log('PIX generated successfully. Transaction ID:', transactionId);
 
     return new Response(
       JSON.stringify({
@@ -232,9 +250,9 @@ serve(async (req) => {
         pixCode: pixCode,
         pixQrCode: pixQrCode,
         pixImage: pixImage,
-        transactionId: data.transactionId,
+        transactionId: transactionId,
         status: data.status,
-        orderId: data.order?.id,
+        orderId: orderId,
       }),
       { 
         status: 200, 
