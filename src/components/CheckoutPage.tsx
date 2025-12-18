@@ -16,6 +16,30 @@ interface CheckoutPageProps {
   onBack: () => void;
 }
 
+const onlyDigits = (value: string) => (value || '').replace(/\D/g, '');
+
+const isValidCPF = (cpfRaw: string) => {
+  const cpf = onlyDigits(cpfRaw);
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+
+  const digits = cpf.split('').map((c) => Number(c));
+
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += digits[i] * (10 - i);
+  let mod = (sum * 10) % 11;
+  if (mod === 10) mod = 0;
+  if (mod !== digits[9]) return false;
+
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += digits[i] * (11 - i);
+  mod = (sum * 10) % 11;
+  if (mod === 10) mod = 0;
+  if (mod !== digits[10]) return false;
+
+  return true;
+};
+
 const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
   const [paymentMethod] = useState<'pix'>('pix');
   const [showQRCode, setShowQRCode] = useState(false);
@@ -99,12 +123,32 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
   };
 
   const handleGenerateQR = async () => {
+    // Validate cart first
+    const total = cartItems.reduce((acc, item) => acc + item.product.discountedPrice * item.quantity, 0);
+    if (!cartItems.length || total <= 0) {
+      toast({
+        title: 'Carrinho vazio',
+        description: 'Adicione pelo menos 1 produto para gerar o PIX.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Validate form
     if (!formData.name || !formData.email || !formData.cpf) {
       toast({
         title: "Preencha os dados",
         description: "Por favor, preencha nome, email e CPF para gerar o PIX.",
         variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isValidCPF(formData.cpf)) {
+      toast({
+        title: 'CPF inválido',
+        description: 'Verifique o CPF informado e tente novamente.',
+        variant: 'destructive',
       });
       return;
     }
@@ -116,8 +160,6 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
     setTransactionId('');
 
     try {
-      const total = cartItems.reduce((acc, item) => acc + item.product.discountedPrice * item.quantity, 0);
-
       if (total < MIN_PIX_AMOUNT) {
         toast({
           title: 'Valor mínimo do PIX',
@@ -138,8 +180,8 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
             amount: total,
             customerName: formData.name,
             customerEmail: formData.email,
-            customerDocument: formData.cpf,
-            customerPhone: formData.phone,
+            customerDocument: onlyDigits(formData.cpf),
+            customerPhone: onlyDigits(formData.phone),
             orderId: orderId,
             street: formData.street,
             number: formData.number,
@@ -475,7 +517,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
                 <h3 className="font-semibold text-foreground mb-4">Forma de Pagamento</h3>
 
                 {paymentMethod === 'pix' && !showQRCode && (
-                  <Button variant="gold" size="lg" className="w-full" onClick={handleGenerateQR} disabled={loading}>
+                  <Button variant="gold" size="lg" className="w-full" onClick={handleGenerateQR} disabled={loading || cartItems.length === 0}>
                     {loading ? (
                       <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                     ) : (

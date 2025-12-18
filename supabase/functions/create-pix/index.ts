@@ -20,6 +20,34 @@ function getCorsHeaders(origin: string | null) {
   };
 }
 
+function onlyDigits(value: string) {
+  return (value || '').replace(/\D/g, '');
+}
+
+function isValidCPF(cpfRaw: string) {
+  const cpf = onlyDigits(cpfRaw);
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+
+  const digits = cpf.split('').map((c) => Number(c));
+
+  // 1st check digit
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += digits[i] * (10 - i);
+  let mod = (sum * 10) % 11;
+  if (mod === 10) mod = 0;
+  if (mod !== digits[9]) return false;
+
+  // 2nd check digit
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += digits[i] * (11 - i);
+  mod = (sum * 10) % 11;
+  if (mod === 10) mod = 0;
+  if (mod !== digits[10]) return false;
+
+  return true;
+}
+
 interface PixRequest {
   amount: number;
   customerName: string;
@@ -112,12 +140,22 @@ serve(async (req) => {
       );
     }
 
-    // Build client object with address
+    const cleanDocument = onlyDigits(customerDocument || '');
+    const cleanPhone = onlyDigits(customerPhone || '');
+
+    if (!isValidCPF(cleanDocument)) {
+      return new Response(
+        JSON.stringify({ error: 'CPF inválido. Verifique os dados informados.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Build client object with normalized values
     const clientData: Record<string, unknown> = {
-      name: customerName,
-      email: customerEmail,
-      phone: customerPhone,
-      document: customerDocument,
+      name: String(customerName || '').trim().slice(0, 120),
+      email: String(customerEmail || '').trim().slice(0, 255),
+      phone: cleanPhone,
+      document: cleanDocument,
     };
 
     // Add address only if we have a valid 8-digit zipCode AND a valid UF (2-letter state)
