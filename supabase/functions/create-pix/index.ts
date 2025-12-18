@@ -112,7 +112,7 @@ serve(async (req) => {
 
     console.log('Processing PIX request for order:', orderId);
 
-    const MIN_PIX_AMOUNT = 7.5;
+    const MIN_PIX_AMOUNT = 10.0;
 
     // Normalize to 2 decimals to avoid floating-point issues (e.g. 7.5 becoming 7.499999999)
     const normalizedAmount = Math.round((amount || 0) * 100) / 100;
