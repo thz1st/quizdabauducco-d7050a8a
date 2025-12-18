@@ -124,7 +124,8 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
 
   const handleGenerateQR = async () => {
     // Validate cart first
-    const total = cartItems.reduce((acc, item) => acc + item.product.discountedPrice * item.quantity, 0);
+    const rawTotal = cartItems.reduce((acc, item) => acc + item.product.discountedPrice * item.quantity, 0);
+    const total = Math.round(rawTotal * 100) / 100;
     if (!cartItems.length || total <= 0) {
       toast({
         title: 'Carrinho vazio',
@@ -160,7 +161,10 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
     setTransactionId('');
 
     try {
-      if (total < MIN_PIX_AMOUNT) {
+      // Avoid floating-point issues on minimum check
+      const totalForCheck = Math.round(total * 100) / 100;
+
+      if (totalForCheck + 1e-9 < MIN_PIX_AMOUNT) {
         toast({
           title: 'Valor mínimo do PIX',
           description: `O valor mínimo para pagamento via PIX é R$ ${MIN_PIX_AMOUNT.toFixed(2).replace('.', ',')}. Adicione mais itens ao carrinho.`,
