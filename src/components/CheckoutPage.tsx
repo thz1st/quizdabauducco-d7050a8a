@@ -53,7 +53,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
   const [transactionId, setTransactionId] = useState('');
   const { toast } = useToast();
 
-  const MIN_PIX_AMOUNT = 5.0;
+  const MIN_PIX_AMOUNT = 7.5;
 
   // Form state
   const [formData, setFormData] = useState({

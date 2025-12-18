@@ -112,7 +112,7 @@ serve(async (req) => {
 
     console.log('Processing PIX request for order:', orderId);
 
-    const MIN_PIX_AMOUNT = 5.0;
+    const MIN_PIX_AMOUNT = 7.5;
 
     // Payment gateway requires a minimum amount
     if (amount < MIN_PIX_AMOUNT) {
@@ -222,7 +222,7 @@ serve(async (req) => {
       const msg = String(data.message || '').toLowerCase();
 
       if (msg.includes('mínimo') || msg.includes('minimum') || msg.includes('below the minimum')) {
-        userMessage = 'O valor do pedido está abaixo do mínimo permitido para PIX. Adicione mais itens ao carrinho.';
+        userMessage = `O valor mínimo para pagamento via PIX é de R$ ${MIN_PIX_AMOUNT.toFixed(2).replace('.', ',')}. Adicione mais itens ao carrinho.`;
       } else if (msg.includes('documento') || msg.includes('cpf')) {
         userMessage = 'CPF inválido. Verifique os dados informados.';
       } else if (data.details?.some?.((d: { field: string }) => d.field?.includes('state'))) {
