@@ -233,28 +233,35 @@ serve(async (req) => {
     }
 
     // Extract PIX data from response
-    // The new API structure may differ - adjust based on actual response
-    const pixCode = data.pix?.qr_code || data.pix?.code || data.qr_code || data.code || '';
-    const pixQrCode = data.pix?.qr_code_base64 || data.pix?.base64 || data.qr_code_base64 || '';
-    const pixImage = data.pix?.qr_code_url || data.pix?.image || data.qr_code_url || '';
-    const transactionId = data.id || data.transaction_id || data.transactionId || '';
+    // EvolutPay returns the transaction under `data`.
+    const root = (data && typeof data === 'object') ? data : {};
+    // @ts-ignore - runtime parsing
+    const tx = (root as any).data ?? root;
+
+    // @ts-ignore - runtime parsing
+    const pix = (tx as any).pix ?? {};
+
+    const pixCode = pix.qr_code || pix.code || (tx as any).qr_code || (tx as any).code || '';
+    const pixQrCode = pix.qr_code_base64 || pix.base64 || (tx as any).qr_code_base64 || '';
+    const pixImage = pix.url || pix.qr_code_url || pix.image || (tx as any).qr_code_url || '';
+    const transactionId = (tx as any).id || (tx as any).transaction_id || (tx as any).transactionId || '';
 
     console.log('PIX generated successfully. Transaction ID:', transactionId);
 
     return new Response(
       JSON.stringify({
         success: true,
-        pixCode: pixCode,
-        pixQrCode: pixQrCode,
-        pixImage: pixImage,
-        transactionId: transactionId,
-        status: data.status,
+        pixCode,
+        pixQrCode,
+        pixImage,
+        transactionId,
+        status: (tx as any).status,
         orderId: orderId,
       }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
     );
 
   } catch (error) {
