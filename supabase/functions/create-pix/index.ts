@@ -44,10 +44,7 @@ function isValidCPF(cpfRaw: string) {
   return true;
 }
 
-// Base64 encode for Basic Auth (Deno compatible)
-function btoa(str: string): string {
-  return btoa(str);
-}
+// Deno has built-in btoa, no custom implementation needed
 
 interface PixRequest {
   amount: number;
