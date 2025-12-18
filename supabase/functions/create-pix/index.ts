@@ -143,9 +143,12 @@ serve(async (req) => {
       };
     }
 
+    // EvolutPay expects amount in centavos (integer)
+    const amountInCents = Math.round(amount * 100);
+
     const payload: Record<string, unknown> = {
       identifier: orderId,
-      amount: amount,
+      amount: amountInCents,
       client: clientData,
       metadata: {
         source: 'bauducco-loja',
