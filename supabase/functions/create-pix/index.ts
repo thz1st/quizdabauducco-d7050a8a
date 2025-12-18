@@ -112,25 +112,8 @@ serve(async (req) => {
 
     console.log('Processing PIX request for order:', orderId);
 
-    const MIN_PIX_AMOUNT = 10.0;
-
-    // Normalize to 2 decimals to avoid floating-point issues (e.g. 7.5 becoming 7.499999999)
+    // Normalize to 2 decimals to avoid floating-point issues
     const normalizedAmount = Math.round((amount || 0) * 100) / 100;
-
-    // Payment gateway requires a minimum amount
-    if (normalizedAmount + 1e-9 < MIN_PIX_AMOUNT) {
-      return new Response(
-        JSON.stringify({
-          error: `O valor mínimo para pagamento via PIX é de R$ ${MIN_PIX_AMOUNT.toFixed(2).replace('.', ',')}. Adicione mais itens ao carrinho.`,
-          code: 'MINIMUM_AMOUNT_ERROR',
-          minAmount: MIN_PIX_AMOUNT,
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      );
-    }
 
     const publicKey = Deno.env.get('EVOLUTPAY_PUBLIC_KEY');
     const secretKey = Deno.env.get('EVOLUTPAY_SECRET_KEY');
@@ -225,7 +208,7 @@ serve(async (req) => {
       const msg = String(data.message || '').toLowerCase();
 
       if (msg.includes('mínimo') || msg.includes('minimum') || msg.includes('below the minimum')) {
-        userMessage = `O valor mínimo para pagamento via PIX é de R$ ${MIN_PIX_AMOUNT.toFixed(2).replace('.', ',')}. Adicione mais itens ao carrinho.`;
+        userMessage = 'O valor do pedido está abaixo do mínimo aceito pelo gateway. Adicione mais itens ao carrinho.';
       } else if (msg.includes('documento') || msg.includes('cpf')) {
         userMessage = 'CPF inválido. Verifique os dados informados.';
       } else if (data.details?.some?.((d: { field: string }) => d.field?.includes('state'))) {
