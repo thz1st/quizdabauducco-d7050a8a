@@ -29,6 +29,8 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
   const [transactionId, setTransactionId] = useState('');
   const { toast } = useToast();
 
+  const MIN_PIX_AMOUNT = 5.0;
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -115,6 +117,16 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
 
     try {
       const total = cartItems.reduce((acc, item) => acc + item.product.discountedPrice * item.quantity, 0);
+
+      if (total < MIN_PIX_AMOUNT) {
+        toast({
+          title: 'Valor mínimo do PIX',
+          description: `O valor mínimo para pagamento via PIX é R$ ${MIN_PIX_AMOUNT.toFixed(2).replace('.', ',')}. Adicione mais itens ao carrinho.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const orderId = `order_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
       console.log('Generating PIX for order:', orderId, 'Amount:', total);

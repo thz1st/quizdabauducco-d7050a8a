@@ -84,17 +84,20 @@ serve(async (req) => {
 
     console.log('Processing PIX request for order:', orderId);
 
-    // EvolutPay requires minimum R$2.00
-    if (amount < 2) {
+    const MIN_PIX_AMOUNT = 5.0;
+
+    // Payment gateway requires a minimum amount
+    if (amount < MIN_PIX_AMOUNT) {
       return new Response(
-        JSON.stringify({ 
-          error: 'O valor mínimo para pagamento via PIX é de R$ 2,00',
-          code: 'MINIMUM_AMOUNT_ERROR'
+        JSON.stringify({
+          error: `O valor mínimo para pagamento via PIX é de R$ ${MIN_PIX_AMOUNT.toFixed(2).replace('.', ',')}`,
+          code: 'MINIMUM_AMOUNT_ERROR',
+          minAmount: MIN_PIX_AMOUNT,
         }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
       );
     }
 
@@ -178,9 +181,11 @@ serve(async (req) => {
       
       // Map specific errors to user-friendly messages
       let userMessage = 'Erro ao gerar QR Code PIX. Tente novamente.';
-      if (data.message?.includes('mínimo')) {
-        userMessage = 'O valor mínimo para pagamento via PIX é de R$ 2,00';
-      } else if (data.message?.includes('documento') || data.message?.includes('CPF')) {
+      const msg = String(data.message || '').toLowerCase();
+
+      if (msg.includes('mínimo') || msg.includes('minimum') || msg.includes('below the minimum')) {
+        userMessage = 'O valor do pedido está abaixo do mínimo permitido para PIX. Adicione mais itens ao carrinho.';
+      } else if (msg.includes('documento') || msg.includes('cpf')) {
         userMessage = 'CPF inválido. Verifique os dados informados.';
       } else if (data.details?.some?.((d: { field: string }) => d.field?.includes('state'))) {
         userMessage = 'Estado inválido. Verifique o CEP informado.';
