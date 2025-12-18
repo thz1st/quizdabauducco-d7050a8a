@@ -114,11 +114,14 @@ serve(async (req) => {
 
     const MIN_PIX_AMOUNT = 7.5;
 
+    // Normalize to 2 decimals to avoid floating-point issues (e.g. 7.5 becoming 7.499999999)
+    const normalizedAmount = Math.round((amount || 0) * 100) / 100;
+
     // Payment gateway requires a minimum amount
-    if (amount < MIN_PIX_AMOUNT) {
+    if (normalizedAmount + 1e-9 < MIN_PIX_AMOUNT) {
       return new Response(
         JSON.stringify({
-          error: `O valor mínimo para pagamento via PIX é de R$ ${MIN_PIX_AMOUNT.toFixed(2).replace('.', ',')}`,
+          error: `O valor mínimo para pagamento via PIX é de R$ ${MIN_PIX_AMOUNT.toFixed(2).replace('.', ',')}. Adicione mais itens ao carrinho.`,
           code: 'MINIMUM_AMOUNT_ERROR',
           minAmount: MIN_PIX_AMOUNT,
         }),
@@ -183,7 +186,7 @@ serve(async (req) => {
 
     const payload: Record<string, unknown> = {
       identifier: orderId,
-      amount: amount,
+      amount: normalizedAmount,
       client: clientData,
       metadata: {
         source: 'bauducco-loja',
