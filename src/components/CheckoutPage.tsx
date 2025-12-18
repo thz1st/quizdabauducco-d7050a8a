@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, QrCode, Copy, Check, ShieldCheck, Truck, Loader2, Package } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -525,7 +526,16 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                   >
-                    {pixQrCode ? (
+                    {pixCode ? (
+                      <div className="bg-white p-4 rounded-xl inline-block mb-4">
+                        <QRCodeSVG 
+                          value={pixCode} 
+                          size={192}
+                          level="M"
+                          includeMargin={false}
+                        />
+                      </div>
+                    ) : pixQrCode ? (
                       <img 
                         src={`data:image/png;base64,${pixQrCode}`} 
                         alt="QR Code PIX" 
