@@ -190,15 +190,14 @@ serve(async (req) => {
       );
     }
 
-    // EvolutPay returns response in data array: { data: [{ id, status, ... }] }
-    // Extract the transaction from the array if present
-    const txArray = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : null);
-    const tx = txArray?.[0] ?? data;
+    // EvolutPay returns response as object: { data: { id, status, ... }, success: true }
+    // NOT an array - extract directly
+    const tx = data?.data ?? data;
     
     console.log('[CHECK-PIX] Extracted transaction:', JSON.stringify(tx, null, 2));
     
     // Check for payment status
-    const rawStatus = tx?.status || tx?.payment_status || data?.status || '';
+    const rawStatus = tx?.status || '';
     const status = String(rawStatus).toUpperCase().trim();
     
     console.log('[CHECK-PIX] Payment status from API:', rawStatus, '-> normalized:', status);
@@ -266,7 +265,7 @@ serve(async (req) => {
           totalPriceInCents: amountInCents,
           gatewayFeeInCents: gatewayFeeInCents,
           userCommissionInCents: userCommissionInCents,
-          currency: "BRL",
+          // Não enviar currency quando for BRL (conforme documentação Utmify)
         },
         isTest: false,
       };

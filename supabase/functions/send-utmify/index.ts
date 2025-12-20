@@ -8,7 +8,7 @@ const corsHeaders = {
 interface UtmifyPayload {
   orderId: string;
   platform: string;
-  paymentMethod: 'pix' | 'credit_card' | 'boleto';
+  paymentMethod: 'pix' | 'credit_card' | 'boleto' | 'paypal' | 'free_price';
   status: 'waiting_payment' | 'paid' | 'refused' | 'refunded' | 'chargedback';
   createdAt: string;
   approvedDate: string | null;
@@ -42,7 +42,7 @@ interface UtmifyPayload {
     totalPriceInCents: number;
     gatewayFeeInCents: number;
     userCommissionInCents: number;
-    currency?: string;
+    currency?: 'BRL' | 'USD' | 'EUR' | 'GBP' | 'ARS' | 'CAD' | 'COP' | 'MXN' | 'PYG' | 'CLP' | 'PEN' | 'PLN';
   };
   isTest?: boolean;
 }
