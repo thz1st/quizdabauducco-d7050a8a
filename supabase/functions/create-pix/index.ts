@@ -202,20 +202,21 @@ serve(async (req) => {
     };
 
     // Build items array from products or create a generic item
+    // IMPORTANT: external_ref MUST be a string for EvolutPay API
     const items = products && products.length > 0
       ? products.map(p => ({
           title: p.name,
           unit_price: Math.round(p.price * 100), // Convert to cents
           quantity: p.quantity,
           tangible: true,
-          external_ref: p.id,
+          external_ref: String(p.id), // Must be string
         }))
       : [{
           title: "Pedido Bauducco",
           unit_price: amountInCents,
           quantity: 1,
           tangible: true,
-          external_ref: orderId,
+          external_ref: String(orderId), // Must be string
         }];
 
     // Build the payload for new EvolutPay API
