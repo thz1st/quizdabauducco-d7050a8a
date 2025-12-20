@@ -170,16 +170,23 @@ serve(async (req) => {
       );
     }
 
-    // Check for payment status - handle multiple possible status values
-    // EvolutPay may return: paid, completed, approved, success, confirmed
-    const rawStatus = data.status || data.payment_status || '';
+    // Check for payment status - handle multiple possible status values and field names
+    // EvolutPay may return status in different fields and formats
+    const rawStatus = data.status || data.payment_status || data.paymentStatus || data.state || data.transactionStatus || '';
     const status = String(rawStatus).toLowerCase().trim();
+    
+    console.log('[CHECK-PIX] Raw API response data:', JSON.stringify(data, null, 2));
     console.log('[CHECK-PIX] Payment status from API:', rawStatus, '-> normalized:', status);
     
-    const PAID_STATUSES = ['paid', 'completed', 'approved', 'success', 'confirmed', 'pago', 'aprovado'];
+    // Extended list of paid statuses (lowercase for comparison)
+    const PAID_STATUSES = [
+      'paid', 'completed', 'approved', 'success', 'confirmed', 
+      'pago', 'aprovado', 'settled', 'captured', 'authorized',
+      'concluido', 'concluída', 'finalizado', 'accepted'
+    ];
     const isPaid = PAID_STATUSES.includes(status);
     
-    console.log('[CHECK-PIX] Is payment confirmed?', isPaid, '(status:', status, ')');
+    console.log('[CHECK-PIX] Is payment confirmed?', isPaid, '(checked against:', PAID_STATUSES.join(', '), ')');
 
     // If payment is confirmed and we have order data, send to Utmify
     if (isPaid && orderId) {
