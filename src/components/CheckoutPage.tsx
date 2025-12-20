@@ -52,9 +52,23 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
   const [pixCode, setPixCode] = useState('');
   const [pixQrCode, setPixQrCode] = useState('');
   const [transactionId, setTransactionId] = useState('');
+  const [orderId, setOrderId] = useState('');
+  const [createdAt, setCreatedAt] = useState('');
   const { toast } = useToast();
 
-  
+  // Extract UTM parameters from URL
+  const getUtmParams = () => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      utm_source: params.get('utm_source') || undefined,
+      utm_campaign: params.get('utm_campaign') || undefined,
+      utm_medium: params.get('utm_medium') || undefined,
+      utm_content: params.get('utm_content') || undefined,
+      utm_term: params.get('utm_term') || undefined,
+      src: params.get('src') || undefined,
+      sck: params.get('sck') || undefined,
+    };
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -162,9 +176,18 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
     setTransactionId('');
 
     try {
-      const orderId = `order_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      const newOrderId = `order_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      const utmParams = getUtmParams();
 
-      console.log('Generating PIX for order:', orderId, 'Amount:', total);
+      console.log('Generating PIX for order:', newOrderId, 'Amount:', total, 'UTMs:', utmParams);
+
+      // Prepare products array for tracking
+      const productsForTracking = cartItems.map(item => ({
+        id: item.product.id,
+        name: item.product.name,
+        quantity: item.quantity,
+        price: item.product.discountedPrice,
+      }));
 
       let data, error;
       try {
@@ -175,13 +198,15 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
             customerEmail: formData.email,
             customerDocument: onlyDigits(formData.cpf),
             customerPhone: onlyDigits(formData.phone),
-            orderId: orderId,
+            orderId: newOrderId,
             street: formData.street,
             number: formData.number,
             neighborhood: formData.neighborhood,
             city: formData.city,
             state: formData.state,
             zipCode: formData.cep,
+            products: productsForTracking,
+            ...utmParams,
           },
         });
         data = response.data;
@@ -220,6 +245,8 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
       setPixCode(data.pixCode || '');
       setPixQrCode(data.pixQrCode || '');
       setTransactionId(data.transactionId || '');
+      setOrderId(data.orderId || newOrderId);
+      setCreatedAt(data.createdAt || '');
       setShowQRCode(true);
 
       toast({
@@ -253,8 +280,31 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
     setCheckingPayment(true);
 
     try {
+      const utmParams = getUtmParams();
+      const rawTotal = cartItems.reduce((acc, item) => acc + item.product.discountedPrice * item.quantity, 0);
+      const total = Math.round(rawTotal * 100) / 100;
+
+      // Prepare products array for tracking
+      const productsForTracking = cartItems.map(item => ({
+        id: item.product.id,
+        name: item.product.name,
+        quantity: item.quantity,
+        price: item.product.discountedPrice,
+      }));
+
       const { data, error } = await supabase.functions.invoke('check-pix', {
-        body: { transactionId },
+        body: { 
+          transactionId,
+          orderId,
+          createdAt,
+          customerName: formData.name,
+          customerEmail: formData.email,
+          customerPhone: onlyDigits(formData.phone),
+          customerDocument: onlyDigits(formData.cpf),
+          products: productsForTracking,
+          totalAmount: total,
+          ...utmParams,
+        },
       });
 
       console.log('Payment check response:', data, error);

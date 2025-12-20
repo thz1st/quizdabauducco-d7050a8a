@@ -17,6 +17,65 @@ function getCorsHeaders(origin: string | null) {
   };
 }
 
+// Helper to format date to UTC string YYYY-MM-DD HH:MM:SS
+function formatDateUTC(date: Date): string {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
+}
+
+// Send event to Utmify (fire and forget)
+async function sendToUtmify(payload: Record<string, unknown>) {
+  try {
+    const utmifyToken = Deno.env.get('UTMIFY_API_TOKEN');
+    if (!utmifyToken) {
+      console.log('UTMIFY_API_TOKEN not configured, skipping tracking');
+      return;
+    }
+
+    console.log('Sending paid status to Utmify:', JSON.stringify(payload, null, 2));
+
+    const response = await fetch('https://api.utmify.com.br/api-credentials/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-token': utmifyToken,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+    console.log('Utmify response:', response.status, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Error sending to Utmify:', error);
+  }
+}
+
+interface CheckPixRequest {
+  transactionId: string;
+  // Order data needed for Utmify update
+  orderId?: string;
+  createdAt?: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  customerDocument?: string;
+  products?: Array<{
+    id: string;
+    name: string;
+    quantity: number;
+    price: number;
+  }>;
+  totalAmount?: number;
+  // UTM parameters
+  utm_source?: string;
+  utm_campaign?: string;
+  utm_medium?: string;
+  utm_content?: string;
+  utm_term?: string;
+  src?: string;
+  sck?: string;
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -26,7 +85,24 @@ serve(async (req) => {
   }
 
   try {
-    const { transactionId } = await req.json();
+    const { 
+      transactionId,
+      orderId,
+      createdAt,
+      customerName,
+      customerEmail,
+      customerPhone,
+      customerDocument,
+      products,
+      totalAmount,
+      utm_source,
+      utm_campaign,
+      utm_medium,
+      utm_content,
+      utm_term,
+      src,
+      sck,
+    }: CheckPixRequest = await req.json();
 
     console.log('Checking payment status for transaction:', transactionId);
 
@@ -77,6 +153,71 @@ serve(async (req) => {
     // Common statuses: pending, paid, canceled, refunded, etc.
     const status = data.status?.toLowerCase() || '';
     const isPaid = status === 'paid' || status === 'completed' || status === 'approved';
+
+    // If payment is confirmed and we have order data, send to Utmify
+    if (isPaid && orderId) {
+      const approvedDate = formatDateUTC(new Date());
+      const amountInCents = Math.round((totalAmount || 0) * 100);
+      const gatewayFeeInCents = Math.round(amountInCents * 0.03);
+      const userCommissionInCents = amountInCents - gatewayFeeInCents;
+
+      // Build Utmify products array
+      const utmifyProducts = products && products.length > 0
+        ? products.map(p => ({
+            id: p.id,
+            name: p.name,
+            planId: null,
+            planName: null,
+            quantity: p.quantity,
+            priceInCents: Math.round(p.price * 100),
+          }))
+        : [{
+            id: orderId,
+            name: "Pedido Bauducco",
+            planId: null,
+            planName: null,
+            quantity: 1,
+            priceInCents: amountInCents,
+          }];
+
+      const utmifyPayload = {
+        orderId: orderId,
+        platform: "Bauducco",
+        paymentMethod: "pix" as const,
+        status: "paid" as const,
+        createdAt: createdAt || approvedDate,
+        approvedDate: approvedDate,
+        refundedAt: null,
+        customer: {
+          name: String(customerName || '').trim(),
+          email: String(customerEmail || '').trim(),
+          phone: customerPhone || null,
+          document: customerDocument || null,
+          country: "BR",
+        },
+        products: utmifyProducts,
+        trackingParameters: {
+          src: src || null,
+          sck: sck || null,
+          utm_source: utm_source || null,
+          utm_campaign: utm_campaign || null,
+          utm_medium: utm_medium || null,
+          utm_content: utm_content || null,
+          utm_term: utm_term || null,
+        },
+        commission: {
+          totalPriceInCents: amountInCents,
+          gatewayFeeInCents: gatewayFeeInCents,
+          userCommissionInCents: userCommissionInCents,
+          currency: "BRL",
+        },
+        isTest: false,
+      };
+
+      // Send to Utmify in background (fire and forget)
+      // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+      (globalThis as any).EdgeRuntime?.waitUntil?.(sendToUtmify(utmifyPayload)) ?? sendToUtmify(utmifyPayload);
+    }
 
     return new Response(
       JSON.stringify({
