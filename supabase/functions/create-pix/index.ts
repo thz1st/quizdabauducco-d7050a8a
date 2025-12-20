@@ -66,6 +66,47 @@ interface PixRequest {
     quantity: number;
     price: number;
   }>;
+  // UTM parameters for tracking
+  utm_source?: string;
+  utm_campaign?: string;
+  utm_medium?: string;
+  utm_content?: string;
+  utm_term?: string;
+  src?: string;
+  sck?: string;
+}
+
+// Helper to format date to UTC string YYYY-MM-DD HH:MM:SS
+function formatDateUTC(date: Date): string {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
+}
+
+// Send event to Utmify (fire and forget)
+async function sendToUtmify(payload: Record<string, unknown>) {
+  try {
+    const utmifyToken = Deno.env.get('UTMIFY_API_TOKEN');
+    if (!utmifyToken) {
+      console.log('UTMIFY_API_TOKEN not configured, skipping tracking');
+      return;
+    }
+
+    console.log('Sending to Utmify:', JSON.stringify(payload, null, 2));
+
+    const response = await fetch('https://api.utmify.com.br/api-credentials/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-token': utmifyToken,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+    console.log('Utmify response:', response.status, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Error sending to Utmify:', error);
+  }
 }
 
 serve(async (req) => {
@@ -105,7 +146,16 @@ serve(async (req) => {
       state,
       zipCode,
       products,
+      utm_source,
+      utm_campaign,
+      utm_medium,
+      utm_content,
+      utm_term,
+      src,
+      sck,
     }: PixRequest = await req.json();
+
+    const createdAt = formatDateUTC(new Date());
 
     console.log('Processing PIX request for order:', orderId, 'Amount:', amount);
 
@@ -248,6 +298,68 @@ serve(async (req) => {
 
     console.log('PIX generated successfully. Transaction ID:', transactionId);
 
+    // Build Utmify products array
+    const utmifyProducts = products && products.length > 0
+      ? products.map(p => ({
+          id: p.id,
+          name: p.name,
+          planId: null,
+          planName: null,
+          quantity: p.quantity,
+          priceInCents: Math.round(p.price * 100),
+        }))
+      : [{
+          id: orderId,
+          name: "Pedido Bauducco",
+          planId: null,
+          planName: null,
+          quantity: 1,
+          priceInCents: amountInCents,
+        }];
+
+    // Calculate gateway fee (estimate ~3%)
+    const gatewayFeeInCents = Math.round(amountInCents * 0.03);
+    const userCommissionInCents = amountInCents - gatewayFeeInCents;
+
+    // Send to Utmify (fire and forget using background task)
+    const utmifyPayload = {
+      orderId: orderId,
+      platform: "Bauducco",
+      paymentMethod: "pix" as const,
+      status: "waiting_payment" as const,
+      createdAt: createdAt,
+      approvedDate: null,
+      refundedAt: null,
+      customer: {
+        name: String(customerName || '').trim(),
+        email: String(customerEmail || '').trim(),
+        phone: cleanPhone || null,
+        document: cleanDocument || null,
+        country: "BR",
+      },
+      products: utmifyProducts,
+      trackingParameters: {
+        src: src || null,
+        sck: sck || null,
+        utm_source: utm_source || null,
+        utm_campaign: utm_campaign || null,
+        utm_medium: utm_medium || null,
+        utm_content: utm_content || null,
+        utm_term: utm_term || null,
+      },
+      commission: {
+        totalPriceInCents: amountInCents,
+        gatewayFeeInCents: gatewayFeeInCents,
+        userCommissionInCents: userCommissionInCents,
+        currency: "BRL",
+      },
+      isTest: false,
+    };
+
+    // Send to Utmify in background (fire and forget)
+    // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+    (globalThis as any).EdgeRuntime?.waitUntil?.(sendToUtmify(utmifyPayload)) ?? sendToUtmify(utmifyPayload);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -257,6 +369,7 @@ serve(async (req) => {
         transactionId,
         status: (tx as any).status,
         orderId: orderId,
+        createdAt: createdAt, // Return for use in check-pix
       }),
       {
         status: 200,

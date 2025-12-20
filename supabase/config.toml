@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.lookup-cep]
 verify_jwt = false
+
+[functions.send-utmify]
+verify_jwt = false
