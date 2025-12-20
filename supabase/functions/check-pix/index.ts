@@ -149,6 +149,8 @@ serve(async (req) => {
     const credentials = btoa(`${publicKey}:${secretKey}`);
 
     // New API endpoint to get transaction status
+    console.log('[CHECK-PIX] Calling EvolutPay API for transaction:', transactionId);
+    
     const response = await fetch(`https://api.evolutpay.com.br/v1/payment-transaction/${transactionId}`, {
       method: 'GET',
       headers: {
@@ -157,16 +159,32 @@ serve(async (req) => {
       },
     });
 
-    const data = await response.json();
-
     console.log('[CHECK-PIX] EvolutPay response status:', response.status);
-    console.log('[CHECK-PIX] EvolutPay response data:', JSON.stringify(data, null, 2));
+
+    // Get response as text first to handle empty or invalid JSON
+    const responseText = await response.text();
+    console.log('[CHECK-PIX] EvolutPay raw response:', responseText.substring(0, 500));
+
+    let data;
+    try {
+      data = responseText ? JSON.parse(responseText) : {};
+    } catch (parseError) {
+      console.error('[CHECK-PIX] Failed to parse EvolutPay response:', parseError);
+      // If response is not JSON, try to extract meaningful info
+      data = { rawResponse: responseText, parseError: true };
+    }
+
+    console.log('[CHECK-PIX] EvolutPay parsed data:', JSON.stringify(data, null, 2));
 
     if (!response.ok) {
       console.error('[CHECK-PIX] Payment check failed:', response.status, JSON.stringify(data));
       return new Response(
-        JSON.stringify({ error: 'Não foi possível verificar o pagamento' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: 'Não foi possível verificar o pagamento',
+          status: 'pending',
+          isPaid: false 
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
