@@ -45,11 +45,42 @@ serve(async (req) => {
       );
     }
 
-    console.log('Looking up CEP');
+    console.log('Looking up CEP:', cleanCep);
 
-    // Call ViaCEP API
-    const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-    const data = await response.json();
+    // Call ViaCEP API with proper headers
+    const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Lovable/1.0',
+      },
+    });
+
+    console.log('ViaCEP response status:', response.status);
+
+    // Check if response is OK
+    if (!response.ok) {
+      console.error('ViaCEP returned non-OK status:', response.status);
+      return new Response(
+        JSON.stringify({ error: 'Erro ao consultar serviço de CEP' }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get response as text first to check if it's valid JSON
+    const responseText = await response.text();
+    console.log('ViaCEP response text:', responseText.substring(0, 200));
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse ViaCEP response as JSON:', responseText.substring(0, 500));
+      return new Response(
+        JSON.stringify({ error: 'Resposta inválida do serviço de CEP' }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (data.erro) {
       return new Response(
