@@ -23,16 +23,17 @@ function formatDateUTC(date: Date): string {
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
 }
 
-// Send event to Utmify (fire and forget)
-async function sendToUtmify(payload: Record<string, unknown>) {
+// Send event to Utmify - AWAITED to ensure it completes
+async function sendToUtmify(payload: Record<string, unknown>): Promise<{ success: boolean; response?: unknown; error?: string }> {
   try {
     const utmifyToken = Deno.env.get('UTMIFY_API_TOKEN');
     if (!utmifyToken) {
-      console.log('UTMIFY_API_TOKEN not configured, skipping tracking');
-      return;
+      console.error('[UTMIFY] UTMIFY_API_TOKEN not configured, skipping tracking');
+      return { success: false, error: 'UTMIFY_API_TOKEN not configured' };
     }
 
-    console.log('Sending paid status to Utmify:', JSON.stringify(payload, null, 2));
+    console.log('[UTMIFY] Sending paid status to Utmify...');
+    console.log('[UTMIFY] Payload:', JSON.stringify(payload, null, 2));
 
     const response = await fetch('https://api.utmify.com.br/api-credentials/orders', {
       method: 'POST',
@@ -43,10 +44,27 @@ async function sendToUtmify(payload: Record<string, unknown>) {
       body: JSON.stringify(payload),
     });
 
-    const data = await response.json();
-    console.log('Utmify response:', response.status, JSON.stringify(data, null, 2));
+    const responseText = await response.text();
+    console.log('[UTMIFY] Response status:', response.status);
+    console.log('[UTMIFY] Response body:', responseText);
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      data = responseText;
+    }
+
+    if (!response.ok) {
+      console.error('[UTMIFY] Error response:', response.status, data);
+      return { success: false, error: `HTTP ${response.status}: ${responseText}` };
+    }
+
+    console.log('[UTMIFY] Successfully sent paid status to Utmify');
+    return { success: true, response: data };
   } catch (error) {
-    console.error('Error sending to Utmify:', error);
+    console.error('[UTMIFY] Exception sending to Utmify:', error);
+    return { success: false, error: String(error) };
   }
 }
 
@@ -104,7 +122,10 @@ serve(async (req) => {
       sck,
     }: CheckPixRequest = await req.json();
 
-    console.log('Checking payment status for transaction:', transactionId);
+    console.log('[CHECK-PIX] ========================================');
+    console.log('[CHECK-PIX] Checking payment status for transaction:', transactionId);
+    console.log('[CHECK-PIX] Order ID:', orderId);
+    console.log('[CHECK-PIX] UTM params:', { src, sck, utm_source, utm_campaign, utm_medium, utm_content, utm_term });
 
     if (!transactionId) {
       return new Response(
@@ -117,7 +138,7 @@ serve(async (req) => {
     const secretKey = Deno.env.get('EVOLUTPAY_SECRET_KEY');
 
     if (!publicKey || !secretKey) {
-      console.error('Payment gateway not configured');
+      console.error('[CHECK-PIX] Payment gateway not configured');
       return new Response(
         JSON.stringify({ error: 'Serviço de pagamento indisponível' }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -138,24 +159,32 @@ serve(async (req) => {
 
     const data = await response.json();
 
-    console.log('Check payment response status:', response.status);
-    console.log('Check payment response data:', JSON.stringify(data, null, 2));
+    console.log('[CHECK-PIX] EvolutPay response status:', response.status);
+    console.log('[CHECK-PIX] EvolutPay response data:', JSON.stringify(data, null, 2));
 
     if (!response.ok) {
-      console.error('Payment check failed:', response.status, JSON.stringify(data));
+      console.error('[CHECK-PIX] Payment check failed:', response.status, JSON.stringify(data));
       return new Response(
         JSON.stringify({ error: 'Não foi possível verificar o pagamento' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // New API status values may differ - adjust based on actual response
-    // Common statuses: pending, paid, canceled, refunded, etc.
-    const status = data.status?.toLowerCase() || '';
-    const isPaid = status === 'paid' || status === 'completed' || status === 'approved';
+    // Check for payment status - handle multiple possible status values
+    // EvolutPay may return: paid, completed, approved, success, confirmed
+    const rawStatus = data.status || data.payment_status || '';
+    const status = String(rawStatus).toLowerCase().trim();
+    console.log('[CHECK-PIX] Payment status from API:', rawStatus, '-> normalized:', status);
+    
+    const PAID_STATUSES = ['paid', 'completed', 'approved', 'success', 'confirmed', 'pago', 'aprovado'];
+    const isPaid = PAID_STATUSES.includes(status);
+    
+    console.log('[CHECK-PIX] Is payment confirmed?', isPaid, '(status:', status, ')');
 
     // If payment is confirmed and we have order data, send to Utmify
     if (isPaid && orderId) {
+      console.log('[CHECK-PIX] Payment confirmed! Preparing to send to Utmify...');
+      
       const approvedDate = formatDateUTC(new Date());
       const amountInCents = Math.round((totalAmount || 0) * 100);
       const gatewayFeeInCents = Math.round(amountInCents * 0.03);
@@ -164,15 +193,15 @@ serve(async (req) => {
       // Build Utmify products array
       const utmifyProducts = products && products.length > 0
         ? products.map(p => ({
-            id: p.id,
-            name: p.name,
+            id: String(p.id),
+            name: String(p.name),
             planId: null,
             planName: null,
-            quantity: p.quantity,
-            priceInCents: Math.round(p.price * 100),
+            quantity: Number(p.quantity),
+            priceInCents: Math.round(Number(p.price) * 100),
           }))
         : [{
-            id: orderId,
+            id: String(orderId),
             name: "Pedido Bauducco",
             planId: null,
             planName: null,
@@ -181,7 +210,7 @@ serve(async (req) => {
           }];
 
       const utmifyPayload = {
-        orderId: orderId,
+        orderId: String(orderId),
         platform: "Bauducco",
         paymentMethod: "pix" as const,
         status: "paid" as const,
@@ -191,19 +220,19 @@ serve(async (req) => {
         customer: {
           name: String(customerName || '').trim(),
           email: String(customerEmail || '').trim(),
-          phone: customerPhone || null,
-          document: customerDocument || null,
+          phone: customerPhone ? String(customerPhone) : null,
+          document: customerDocument ? String(customerDocument) : null,
           country: "BR",
         },
         products: utmifyProducts,
         trackingParameters: {
-          src: src || null,
-          sck: sck || null,
-          utm_source: utm_source || null,
-          utm_campaign: utm_campaign || null,
-          utm_medium: utm_medium || null,
-          utm_content: utm_content || null,
-          utm_term: utm_term || null,
+          src: src ? String(src) : null,
+          sck: sck ? String(sck) : null,
+          utm_source: utm_source ? String(utm_source) : null,
+          utm_campaign: utm_campaign ? String(utm_campaign) : null,
+          utm_medium: utm_medium ? String(utm_medium) : null,
+          utm_content: utm_content ? String(utm_content) : null,
+          utm_term: utm_term ? String(utm_term) : null,
         },
         commission: {
           totalPriceInCents: amountInCents,
@@ -214,9 +243,15 @@ serve(async (req) => {
         isTest: false,
       };
 
-      // Send to Utmify in background (fire and forget)
-      // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
-      (globalThis as any).EdgeRuntime?.waitUntil?.(sendToUtmify(utmifyPayload)) ?? sendToUtmify(utmifyPayload);
+      console.log('[CHECK-PIX] Utmify payload prepared, sending...');
+      
+      // Send to Utmify and wait for response (don't use fire-and-forget for critical tracking)
+      const utmifyResult = await sendToUtmify(utmifyPayload);
+      console.log('[CHECK-PIX] Utmify send result:', utmifyResult);
+    } else if (isPaid && !orderId) {
+      console.warn('[CHECK-PIX] Payment is confirmed but orderId is missing - cannot send to Utmify');
+    } else {
+      console.log('[CHECK-PIX] Payment not yet confirmed, status:', status);
     }
 
     return new Response(
@@ -231,7 +266,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Internal error checking payment:', error);
+    console.error('[CHECK-PIX] Internal error checking payment:', error);
     return new Response(
       JSON.stringify({ error: 'Erro ao verificar pagamento. Tente novamente.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
