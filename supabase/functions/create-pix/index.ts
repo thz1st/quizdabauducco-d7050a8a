@@ -82,16 +82,17 @@ function formatDateUTC(date: Date): string {
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
 }
 
-// Send event to Utmify (fire and forget)
-async function sendToUtmify(payload: Record<string, unknown>) {
+// Send event to Utmify with detailed logging
+async function sendToUtmify(payload: Record<string, unknown>): Promise<{ success: boolean; response?: unknown; error?: string }> {
   try {
     const utmifyToken = Deno.env.get('UTMIFY_API_TOKEN');
     if (!utmifyToken) {
-      console.log('UTMIFY_API_TOKEN not configured, skipping tracking');
-      return;
+      console.error('[UTMIFY] UTMIFY_API_TOKEN not configured, skipping tracking');
+      return { success: false, error: 'UTMIFY_API_TOKEN not configured' };
     }
 
-    console.log('Sending to Utmify:', JSON.stringify(payload, null, 2));
+    console.log('[UTMIFY] Sending waiting_payment status to Utmify...');
+    console.log('[UTMIFY] Payload:', JSON.stringify(payload, null, 2));
 
     const response = await fetch('https://api.utmify.com.br/api-credentials/orders', {
       method: 'POST',
@@ -102,10 +103,27 @@ async function sendToUtmify(payload: Record<string, unknown>) {
       body: JSON.stringify(payload),
     });
 
-    const data = await response.json();
-    console.log('Utmify response:', response.status, JSON.stringify(data, null, 2));
+    const responseText = await response.text();
+    console.log('[UTMIFY] Response status:', response.status);
+    console.log('[UTMIFY] Response body:', responseText);
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      data = responseText;
+    }
+
+    if (!response.ok) {
+      console.error('[UTMIFY] Error response:', response.status, data);
+      return { success: false, error: `HTTP ${response.status}: ${responseText}` };
+    }
+
+    console.log('[UTMIFY] Successfully sent waiting_payment status to Utmify');
+    return { success: true, response: data };
   } catch (error) {
-    console.error('Error sending to Utmify:', error);
+    console.error('[UTMIFY] Exception sending to Utmify:', error);
+    return { success: false, error: String(error) };
   }
 }
 
@@ -297,20 +315,22 @@ serve(async (req) => {
     const pixImage = pix.url || pix.qr_code_url || pix.image || (tx as any).qr_code_url || '';
     const transactionId = (tx as any).id || (tx as any).transaction_id || (tx as any).transactionId || '';
 
-    console.log('PIX generated successfully. Transaction ID:', transactionId);
+    console.log('[CREATE-PIX] PIX generated successfully. Transaction ID:', transactionId);
+    console.log('[CREATE-PIX] Order ID:', orderId);
+    console.log('[CREATE-PIX] UTM params:', { src, sck, utm_source, utm_campaign, utm_medium, utm_content, utm_term });
 
-    // Build Utmify products array
+    // Build Utmify products array - ensure all values are properly typed
     const utmifyProducts = products && products.length > 0
       ? products.map(p => ({
-          id: p.id,
-          name: p.name,
+          id: String(p.id),
+          name: String(p.name),
           planId: null,
           planName: null,
-          quantity: p.quantity,
-          priceInCents: Math.round(p.price * 100),
+          quantity: Number(p.quantity),
+          priceInCents: Math.round(Number(p.price) * 100),
         }))
       : [{
-          id: orderId,
+          id: String(orderId),
           name: "Pedido Bauducco",
           planId: null,
           planName: null,
@@ -322,9 +342,9 @@ serve(async (req) => {
     const gatewayFeeInCents = Math.round(amountInCents * 0.03);
     const userCommissionInCents = amountInCents - gatewayFeeInCents;
 
-    // Send to Utmify (fire and forget using background task)
+    // Send to Utmify with properly typed payload
     const utmifyPayload = {
-      orderId: orderId,
+      orderId: String(orderId),
       platform: "Bauducco",
       paymentMethod: "pix" as const,
       status: "waiting_payment" as const,
@@ -334,19 +354,19 @@ serve(async (req) => {
       customer: {
         name: String(customerName || '').trim(),
         email: String(customerEmail || '').trim(),
-        phone: cleanPhone || null,
-        document: cleanDocument || null,
+        phone: cleanPhone ? String(cleanPhone) : null,
+        document: cleanDocument ? String(cleanDocument) : null,
         country: "BR",
       },
       products: utmifyProducts,
       trackingParameters: {
-        src: src || null,
-        sck: sck || null,
-        utm_source: utm_source || null,
-        utm_campaign: utm_campaign || null,
-        utm_medium: utm_medium || null,
-        utm_content: utm_content || null,
-        utm_term: utm_term || null,
+        src: src ? String(src) : null,
+        sck: sck ? String(sck) : null,
+        utm_source: utm_source ? String(utm_source) : null,
+        utm_campaign: utm_campaign ? String(utm_campaign) : null,
+        utm_medium: utm_medium ? String(utm_medium) : null,
+        utm_content: utm_content ? String(utm_content) : null,
+        utm_term: utm_term ? String(utm_term) : null,
       },
       commission: {
         totalPriceInCents: amountInCents,
@@ -357,7 +377,9 @@ serve(async (req) => {
       isTest: false,
     };
 
-    // Send to Utmify in background (fire and forget)
+    console.log('[CREATE-PIX] Sending waiting_payment to Utmify...');
+    
+    // Send to Utmify in background (fire and forget) but with proper error handling
     // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
     (globalThis as any).EdgeRuntime?.waitUntil?.(sendToUtmify(utmifyPayload)) ?? sendToUtmify(utmifyPayload);
 
