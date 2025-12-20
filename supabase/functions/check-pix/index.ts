@@ -148,11 +148,15 @@ serve(async (req) => {
     // API endpoint with /info/ path as per documentation
     const apiUrl = `https://api.evolutpay.com.br/v1/payment-transaction/info/${transactionId}`;
     console.log('[CHECK-PIX] Calling EvolutPay API:', apiUrl);
-    
+
+    // Auth (EvolutPay expects Authorization header)
+    const credentials = btoa(`${publicKey}:${secretKey}`);
+
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
         'accept': 'application/json',
+        'authorization': `Basic ${credentials}`,
       },
     });
 
