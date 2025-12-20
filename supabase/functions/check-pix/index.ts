@@ -149,14 +149,15 @@ serve(async (req) => {
     const apiUrl = `https://api.evolutpay.com.br/v1/payment-transaction/info/${transactionId}`;
     console.log('[CHECK-PIX] Calling EvolutPay API:', apiUrl);
 
-    // Auth (EvolutPay expects Authorization header)
+    // Auth (EvolutPay expects Basic Auth, same as create-pix)
     const credentials = btoa(`${publicKey}:${secretKey}`);
+    console.log('[CHECK-PIX] Using Basic Auth with public key:', publicKey?.substring(0, 8) + '...');
 
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
-        'accept': 'application/json',
-        'authorization': `Basic ${credentials}`,
+        'Accept': 'application/json',
+        'Authorization': `Basic ${credentials}`,
       },
     });
 
@@ -189,19 +190,24 @@ serve(async (req) => {
       );
     }
 
-    // Check for payment status - handle multiple possible status values and field names
-    // EvolutPay may return status in different fields and formats
-    const rawStatus = data.status || data.payment_status || data.paymentStatus || data.state || data.transactionStatus || '';
-    const status = String(rawStatus).toLowerCase().trim();
+    // EvolutPay returns response in data array: { data: [{ id, status, ... }] }
+    // Extract the transaction from the array if present
+    const txArray = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : null);
+    const tx = txArray?.[0] ?? data;
     
-    console.log('[CHECK-PIX] Raw API response data:', JSON.stringify(data, null, 2));
+    console.log('[CHECK-PIX] Extracted transaction:', JSON.stringify(tx, null, 2));
+    
+    // Check for payment status
+    const rawStatus = tx?.status || tx?.payment_status || data?.status || '';
+    const status = String(rawStatus).toUpperCase().trim();
+    
     console.log('[CHECK-PIX] Payment status from API:', rawStatus, '-> normalized:', status);
     
-    // EvolutPay returns uppercase status: PAID, PENDING, REFUNDED, FAILED, REFUSED
+    // EvolutPay returns uppercase status: PAID, PENDING, REFUNDED, FAILED, REFUSED, CHARGEBACK, PRECHARGEBACK, EXPIRED, ERROR
     const PAID_STATUSES = ['PAID'];
-    const isPaid = PAID_STATUSES.includes(String(rawStatus).toUpperCase());
+    const isPaid = PAID_STATUSES.includes(status);
     
-    console.log('[CHECK-PIX] Is payment confirmed?', isPaid, '(checked against:', PAID_STATUSES.join(', '), ')');
+    console.log('[CHECK-PIX] Is payment confirmed?', isPaid);
 
     // If payment is confirmed and we have order data, send to Utmify
     if (isPaid && orderId) {
