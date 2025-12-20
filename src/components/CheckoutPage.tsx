@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, QrCode, Copy, Check, ShieldCheck, Truck, Loader2, Package } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -55,6 +55,8 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
   const [orderId, setOrderId] = useState('');
   const [createdAt, setCreatedAt] = useState('');
   const { toast } = useToast();
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Extract UTM parameters from URL
   const getUtmParams = () => {
@@ -338,6 +340,102 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
     }
   };
 
+  // Automatic payment polling when QR code is displayed
+  useEffect(() => {
+    // Only start polling if QR code is shown, we have a transaction ID, and payment is not confirmed
+    if (!showQRCode || !transactionId || paymentConfirmed) {
+      return;
+    }
+
+    const checkPaymentStatus = async () => {
+      try {
+        setCheckingPayment(true);
+        const utmParams = getUtmParams();
+        const rawTotal = cartItems.reduce((acc, item) => acc + item.product.discountedPrice * item.quantity, 0);
+        const total = Math.round(rawTotal * 100) / 100;
+
+        const productsForTracking = cartItems.map(item => ({
+          id: item.product.id,
+          name: item.product.name,
+          quantity: item.quantity,
+          price: item.product.discountedPrice,
+        }));
+
+        console.log('[POLLING] Checking payment status for transaction:', transactionId);
+
+        const { data, error } = await supabase.functions.invoke('check-pix', {
+          body: { 
+            transactionId,
+            orderId,
+            createdAt,
+            customerName: formData.name,
+            customerEmail: formData.email,
+            customerPhone: onlyDigits(formData.phone),
+            customerDocument: onlyDigits(formData.cpf),
+            products: productsForTracking,
+            totalAmount: total,
+            ...utmParams,
+          },
+        });
+
+        console.log('[POLLING] Payment check response:', data);
+
+        if (error) {
+          console.error('[POLLING] Error checking payment:', error);
+          return;
+        }
+
+        if (data?.isPaid) {
+          console.log('[POLLING] Payment confirmed!');
+          setPaymentConfirmed(true);
+          toast({
+            title: "Pagamento confirmado!",
+            description: "Seu pedido foi processado com sucesso.",
+          });
+          
+          // Stop polling
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+          if (pollingTimeoutRef.current) {
+            clearTimeout(pollingTimeoutRef.current);
+            pollingTimeoutRef.current = null;
+          }
+        }
+      } catch (error) {
+        console.error('[POLLING] Error:', error);
+      } finally {
+        setCheckingPayment(false);
+      }
+    };
+
+    // Start polling: check immediately, then every 5 seconds
+    checkPaymentStatus();
+    pollingIntervalRef.current = setInterval(checkPaymentStatus, 5000);
+
+    // Stop polling after 15 minutes (PIX expiration)
+    pollingTimeoutRef.current = setTimeout(() => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      console.log('[POLLING] Stopped after 15 minutes timeout');
+    }, 15 * 60 * 1000);
+
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
+      }
+    };
+  }, [showQRCode, transactionId, paymentConfirmed]);
+
   // Payment confirmed success screen
   if (paymentConfirmed) {
     return (
@@ -615,21 +713,16 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
                       <p className="text-christmas-green text-sm mb-4">Código copiado!</p>
                     )}
                     
-                    {/* Check Payment Button */}
-                    <Button 
-                      variant="gold" 
-                      size="lg" 
-                      className="w-full mt-4" 
-                      onClick={handleCheckPayment}
-                      disabled={checkingPayment || !transactionId}
-                    >
-                      {checkingPayment ? (
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      ) : (
-                        <Check className="w-5 h-5 mr-2" />
-                      )}
-                      {checkingPayment ? 'Verificando...' : 'Já efetuei o pagamento'}
-                    </Button>
+                    {/* Automatic Payment Check Indicator */}
+                    <div className="flex items-center justify-center gap-2 mt-4 p-4 bg-gold/10 rounded-lg border border-gold/20">
+                      <Loader2 className="w-5 h-5 animate-spin text-gold" />
+                      <span className="text-foreground font-medium">
+                        Aguardando pagamento...
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground text-xs mt-2">
+                      A confirmação será automática após o pagamento
+                    </p>
                   </motion.div>
                 )}
 
