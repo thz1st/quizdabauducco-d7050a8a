@@ -47,47 +47,84 @@ serve(async (req) => {
 
     console.log('Looking up CEP:', cleanCep);
 
-    // Call ViaCEP API with proper headers
-    const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'Lovable/1.0',
-      },
-    });
+    // Try BrasilAPI first (more reliable)
+    let data = null;
+    let apiUsed = '';
 
-    console.log('ViaCEP response status:', response.status);
-
-    // Check if response is OK
-    if (!response.ok) {
-      console.error('ViaCEP returned non-OK status:', response.status);
-      return new Response(
-        JSON.stringify({ error: 'Erro ao consultar serviço de CEP' }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get response as text first to check if it's valid JSON
-    const responseText = await response.text();
-    console.log('ViaCEP response text:', responseText.substring(0, 200));
-
-    let data;
+    // Try BrasilAPI
     try {
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Failed to parse ViaCEP response as JSON:', responseText.substring(0, 500));
-      return new Response(
-        JSON.stringify({ error: 'Resposta inválida do serviço de CEP' }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.log('Trying BrasilAPI...');
+      const brasilApiResponse = await fetch(`https://brasilapi.com.br/api/cep/v1/${cleanCep}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Lovable/1.0',
+        },
+      });
+
+      console.log('BrasilAPI response status:', brasilApiResponse.status);
+
+      if (brasilApiResponse.ok) {
+        const brasilData = await brasilApiResponse.json();
+        console.log('BrasilAPI success:', JSON.stringify(brasilData).substring(0, 200));
+        
+        if (!brasilData.errors) {
+          data = {
+            logradouro: brasilData.street || '',
+            bairro: brasilData.neighborhood || '',
+            localidade: brasilData.city || '',
+            uf: brasilData.state || '',
+          };
+          apiUsed = 'BrasilAPI';
+        }
+      }
+    } catch (brasilApiError) {
+      console.error('BrasilAPI error:', brasilApiError);
     }
 
-    if (data.erro) {
+    // Fallback to ViaCEP if BrasilAPI failed
+    if (!data) {
+      try {
+        console.log('Trying ViaCEP as fallback...');
+        const viaCepResponse = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'Lovable/1.0',
+          },
+        });
+
+        console.log('ViaCEP response status:', viaCepResponse.status);
+
+        if (viaCepResponse.ok) {
+          const responseText = await viaCepResponse.text();
+          console.log('ViaCEP response text:', responseText.substring(0, 200));
+
+          try {
+            const viaCepData = JSON.parse(responseText);
+            if (!viaCepData.erro) {
+              data = viaCepData;
+              apiUsed = 'ViaCEP';
+            }
+          } catch (parseError) {
+            console.error('Failed to parse ViaCEP response:', parseError);
+          }
+        }
+      } catch (viaCepError) {
+        console.error('ViaCEP error:', viaCepError);
+      }
+    }
+
+    // If both APIs failed
+    if (!data) {
+      console.error('Both CEP APIs failed for CEP:', cleanCep);
       return new Response(
-        JSON.stringify({ error: 'CEP não encontrado' }),
+        JSON.stringify({ error: 'CEP não encontrado. Verifique o número e tente novamente.' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('CEP found using', apiUsed);
 
     return new Response(
       JSON.stringify({
