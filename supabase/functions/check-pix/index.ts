@@ -145,17 +145,14 @@ serve(async (req) => {
       );
     }
 
-    // Create Basic Auth credentials for new API
-    const credentials = btoa(`${publicKey}:${secretKey}`);
-
-    // New API endpoint to get transaction status
-    console.log('[CHECK-PIX] Calling EvolutPay API for transaction:', transactionId);
+    // API endpoint with /info/ path as per documentation
+    const apiUrl = `https://api.evolutpay.com.br/v1/payment-transaction/info/${transactionId}`;
+    console.log('[CHECK-PIX] Calling EvolutPay API:', apiUrl);
     
-    const response = await fetch(`https://api.evolutpay.com.br/v1/payment-transaction/${transactionId}`, {
+    const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Basic ${credentials}`,
-        'Accept': 'application/json',
+        'accept': 'application/json',
       },
     });
 
@@ -196,13 +193,9 @@ serve(async (req) => {
     console.log('[CHECK-PIX] Raw API response data:', JSON.stringify(data, null, 2));
     console.log('[CHECK-PIX] Payment status from API:', rawStatus, '-> normalized:', status);
     
-    // Extended list of paid statuses (lowercase for comparison)
-    const PAID_STATUSES = [
-      'paid', 'completed', 'approved', 'success', 'confirmed', 
-      'pago', 'aprovado', 'settled', 'captured', 'authorized',
-      'concluido', 'concluída', 'finalizado', 'accepted'
-    ];
-    const isPaid = PAID_STATUSES.includes(status);
+    // EvolutPay returns uppercase status: PAID, PENDING, REFUNDED, FAILED, REFUSED
+    const PAID_STATUSES = ['PAID'];
+    const isPaid = PAID_STATUSES.includes(String(rawStatus).toUpperCase());
     
     console.log('[CHECK-PIX] Is payment confirmed?', isPaid, '(checked against:', PAID_STATUSES.join(', '), ')');
 
