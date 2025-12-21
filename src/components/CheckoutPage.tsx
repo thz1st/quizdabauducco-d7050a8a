@@ -540,6 +540,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
           <span className="font-medium">Oferta expira em:</span>
           <span className="font-bold text-lg tabular-nums">{formatTime(timeLeft)}</span>
         </div>
+        <p className="text-center text-sm mt-1 font-medium">Últimas unidades! Apenas 5 vagas restantes.</p>
       </motion.div>
 
       {/* Header */}
