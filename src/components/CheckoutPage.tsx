@@ -531,7 +531,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
     <div className="min-h-screen px-4 py-6">
       {/* Countdown Timer Banner */}
       <motion.div
-        className="bg-destructive/90 text-destructive-foreground py-3 px-4 rounded-lg mb-4 max-w-4xl mx-auto"
+        className="bg-destructive/90 text-destructive-foreground py-3 px-4 rounded-lg max-w-4xl mx-auto"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -541,6 +541,16 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
           <span className="font-bold text-lg tabular-nums">{formatTime(timeLeft)}</span>
         </div>
       </motion.div>
+      
+      {/* Urgency Text */}
+      <motion.p
+        className="text-center text-gold font-semibold text-sm mb-4 max-w-4xl mx-auto"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+      >
+        Últimas unidades! Apenas 5 vagas restantes.
+      </motion.p>
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
