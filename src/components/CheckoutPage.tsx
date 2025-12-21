@@ -544,7 +544,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
       
       {/* Urgency Text */}
       <motion.p
-        className="text-center text-gold font-semibold text-sm mb-4 max-w-4xl mx-auto"
+        className="text-center text-gold font-bold text-xl md:text-2xl mb-4 max-w-4xl mx-auto"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
