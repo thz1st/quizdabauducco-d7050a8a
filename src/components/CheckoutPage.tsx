@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, QrCode, Copy, Check, ShieldCheck, Truck, Loader2, Package } from 'lucide-react';
+import { ArrowLeft, QrCode, Copy, Check, ShieldCheck, Truck, Loader2, Package, Clock } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -54,6 +54,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
   const [transactionId, setTransactionId] = useState('');
   const [orderId, setOrderId] = useState('');
   const [createdAt, setCreatedAt] = useState('');
+  const [timeLeft, setTimeLeft] = useState(10 * 60); // 10 minutes in seconds
   const { toast } = useToast();
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -436,6 +437,30 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
     };
   }, [showQRCode, transactionId, paymentConfirmed]);
 
+  // Countdown timer effect
+  useEffect(() => {
+    if (paymentConfirmed || timeLeft <= 0) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [paymentConfirmed, timeLeft]);
+
+  // Format time as MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   // Payment confirmed success screen
   if (paymentConfirmed) {
     return (
@@ -504,6 +529,19 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
 
   return (
     <div className="min-h-screen px-4 py-6">
+      {/* Countdown Timer Banner */}
+      <motion.div
+        className="bg-destructive/90 text-destructive-foreground py-3 px-4 rounded-lg mb-4 max-w-4xl mx-auto"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className="flex items-center justify-center gap-3">
+          <Clock className="w-5 h-5" />
+          <span className="font-medium">Oferta expira em:</span>
+          <span className="font-bold text-lg tabular-nums">{formatTime(timeLeft)}</span>
+        </div>
+      </motion.div>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <Button variant="ghost" size="sm" onClick={onBack}>
