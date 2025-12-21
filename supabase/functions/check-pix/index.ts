@@ -270,11 +270,17 @@ serve(async (req) => {
         isTest: false,
       };
 
-      console.log('[CHECK-PIX] Utmify payload prepared, sending...');
+      console.log('[CHECK-PIX] Utmify payload prepared:', JSON.stringify(utmifyPayload, null, 2));
       
       // Send to Utmify and wait for response (don't use fire-and-forget for critical tracking)
       const utmifyResult = await sendToUtmify(utmifyPayload);
-      console.log('[CHECK-PIX] Utmify send result:', utmifyResult);
+      console.log('[CHECK-PIX] ========================================');
+      console.log('[CHECK-PIX] Utmify send result - Success:', utmifyResult.success);
+      console.log('[CHECK-PIX] Utmify send result - Response:', JSON.stringify(utmifyResult.response, null, 2));
+      if (utmifyResult.error) {
+        console.error('[CHECK-PIX] Utmify send ERROR:', utmifyResult.error);
+      }
+      console.log('[CHECK-PIX] ========================================');
     } else if (isPaid && !orderId) {
       console.warn('[CHECK-PIX] Payment is confirmed but orderId is missing - cannot send to Utmify');
     } else {
@@ -283,11 +289,12 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        status: data.status,
-        paidAt: data.paid_at || data.payedAt || null,
+        status: tx?.status || data?.status || status,
+        paidAt: tx?.paid_at || tx?.payedAt || data?.paid_at || data?.payedAt || null,
         isPaid: isPaid,
-        paymentMethod: data.payment_method || 'pix',
-        amount: data.amount,
+        paymentMethod: tx?.payment_method || data?.payment_method || 'pix',
+        amount: tx?.amount || data?.amount,
+        utmifySent: isPaid && orderId ? true : false,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
