@@ -251,6 +251,7 @@ serve(async (req) => {
         provider_name: "Bauducco Store",
         order_id: orderId,
         source: "bauducco-loja",
+        created_at: createdAt,
       },
     };
 
@@ -368,12 +369,11 @@ serve(async (req) => {
         utm_content: utm_content ? String(utm_content) : null,
         utm_term: utm_term ? String(utm_term) : null,
       },
-      commission: {
-        totalPriceInCents: amountInCents,
-        gatewayFeeInCents: gatewayFeeInCents,
-        userCommissionInCents: userCommissionInCents,
-        currency: "BRL",
-      },
+       commission: {
+         totalPriceInCents: amountInCents,
+         gatewayFeeInCents: gatewayFeeInCents,
+         userCommissionInCents: userCommissionInCents,
+       },
       isTest: false,
     };
 

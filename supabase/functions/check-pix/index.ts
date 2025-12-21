@@ -201,13 +201,18 @@ serve(async (req) => {
     // Check for payment status
     const rawStatus = tx?.status || '';
     const status = String(rawStatus).toUpperCase().trim();
-    
+
     console.log('[CHECK-PIX] Payment status from API:', rawStatus, '-> normalized:', status);
-    
+
     // EvolutPay returns uppercase status: PAID, PENDING, REFUNDED, FAILED, REFUSED, CHARGEBACK, PRECHARGEBACK, EXPIRED, ERROR
-    const PAID_STATUSES = ['PAID'];
-    const isPaid = PAID_STATUSES.includes(status);
-    
+    // For PIX, the safest additional signal we can use is the end-to-end identifier (e2e). When present, payment is confirmed.
+    const PAID_STATUSES = ['PAID', 'APPROVED', 'CONFIRMED', 'COMPLETED'];
+    const pixE2E = (tx as any)?.pix?.e2_e ?? (tx as any)?.pix?.e2e ?? (tx as any)?.pix?.end_to_end_id ?? (tx as any)?.pix?.endToEndId ?? null;
+    const hasPixE2E = typeof pixE2E === 'string' && pixE2E.trim().length > 0;
+
+    const isPaid = PAID_STATUSES.includes(status) || hasPixE2E;
+
+    console.log('[CHECK-PIX] PIX e2e present?', hasPixE2E, hasPixE2E ? String(pixE2E) : null);
     console.log('[CHECK-PIX] Is payment confirmed?', isPaid);
 
     let utmifyResult: { success: boolean; statusCode?: number; response?: unknown; error?: string } | null = null;
@@ -215,8 +220,15 @@ serve(async (req) => {
     // If payment is confirmed and we have order data, send to Utmify
     if (isPaid && orderId) {
       console.log('[CHECK-PIX] Payment confirmed! Preparing to send to Utmify...');
-      
+
       const approvedDate = formatDateUTC(new Date());
+      const createdAtFromTx = typeof (tx as any)?.metadata?.created_at === 'string' ? String((tx as any).metadata.created_at) : null;
+      const createdAtForUtmify = createdAt || createdAtFromTx || approvedDate;
+
+      if (!createdAt) {
+        console.warn('[CHECK-PIX] createdAt not provided by frontend. Fallback createdAt used:', createdAtForUtmify);
+      }
+
       const amountInCents = Math.round((totalAmount || 0) * 100);
       const gatewayFeeInCents = Math.round(amountInCents * 0.03);
       const userCommissionInCents = amountInCents - gatewayFeeInCents;
@@ -245,7 +257,7 @@ serve(async (req) => {
         platform: "Bauducco",
         paymentMethod: "pix" as const,
         status: "paid" as const,
-        createdAt: createdAt || approvedDate,
+        createdAt: createdAtForUtmify,
         approvedDate: approvedDate,
         refundedAt: null,
         customer: {
@@ -269,7 +281,6 @@ serve(async (req) => {
           totalPriceInCents: amountInCents,
           gatewayFeeInCents: gatewayFeeInCents,
           userCommissionInCents: userCommissionInCents,
-          currency: "BRL",
         },
         isTest: false,
       };
