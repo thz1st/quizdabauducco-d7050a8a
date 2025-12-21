@@ -549,7 +549,7 @@ const CheckoutPage = ({ cartItems, onBack }: CheckoutPageProps) => {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
-        Últimas unidades! Apenas 3 unidades restantes.
+        Últimas unidades! Poucas unidades restantes.
       </motion.p>
 
       {/* Header */}
