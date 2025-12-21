@@ -24,7 +24,9 @@ function formatDateUTC(date: Date): string {
 }
 
 // Send event to Utmify - AWAITED to ensure it completes
-async function sendToUtmify(payload: Record<string, unknown>): Promise<{ success: boolean; response?: unknown; error?: string }> {
+async function sendToUtmify(
+  payload: Record<string, unknown>
+): Promise<{ success: boolean; statusCode?: number; response?: unknown; error?: string }> {
   try {
     const utmifyToken = Deno.env.get('UTMIFY_API_TOKEN');
     if (!utmifyToken) {
@@ -32,7 +34,7 @@ async function sendToUtmify(payload: Record<string, unknown>): Promise<{ success
       return { success: false, error: 'UTMIFY_API_TOKEN not configured' };
     }
 
-    console.log('[UTMIFY] Sending paid status to Utmify...');
+    console.log('[UTMIFY] Sending order update to Utmify...');
     console.log('[UTMIFY] Payload:', JSON.stringify(payload, null, 2));
 
     const response = await fetch('https://api.utmify.com.br/api-credentials/orders', {
@@ -48,7 +50,7 @@ async function sendToUtmify(payload: Record<string, unknown>): Promise<{ success
     console.log('[UTMIFY] Response status:', response.status);
     console.log('[UTMIFY] Response body:', responseText);
 
-    let data;
+    let data: unknown;
     try {
       data = JSON.parse(responseText);
     } catch {
@@ -57,11 +59,11 @@ async function sendToUtmify(payload: Record<string, unknown>): Promise<{ success
 
     if (!response.ok) {
       console.error('[UTMIFY] Error response:', response.status, data);
-      return { success: false, error: `HTTP ${response.status}: ${responseText}` };
+      return { success: false, statusCode: response.status, error: `HTTP ${response.status}: ${responseText}` };
     }
 
-    console.log('[UTMIFY] Successfully sent paid status to Utmify');
-    return { success: true, response: data };
+    console.log('[UTMIFY] Successfully sent order update to Utmify');
+    return { success: true, statusCode: response.status, response: data };
   } catch (error) {
     console.error('[UTMIFY] Exception sending to Utmify:', error);
     return { success: false, error: String(error) };
@@ -208,6 +210,8 @@ serve(async (req) => {
     
     console.log('[CHECK-PIX] Is payment confirmed?', isPaid);
 
+    let utmifyResult: { success: boolean; statusCode?: number; response?: unknown; error?: string } | null = null;
+
     // If payment is confirmed and we have order data, send to Utmify
     if (isPaid && orderId) {
       console.log('[CHECK-PIX] Payment confirmed! Preparing to send to Utmify...');
@@ -265,7 +269,7 @@ serve(async (req) => {
           totalPriceInCents: amountInCents,
           gatewayFeeInCents: gatewayFeeInCents,
           userCommissionInCents: userCommissionInCents,
-          // Não enviar currency quando for BRL (conforme documentação Utmify)
+          currency: "BRL",
         },
         isTest: false,
       };
@@ -273,7 +277,7 @@ serve(async (req) => {
       console.log('[CHECK-PIX] Utmify payload prepared:', JSON.stringify(utmifyPayload, null, 2));
       
       // Send to Utmify and wait for response (don't use fire-and-forget for critical tracking)
-      const utmifyResult = await sendToUtmify(utmifyPayload);
+      utmifyResult = await sendToUtmify(utmifyPayload);
       console.log('[CHECK-PIX] ========================================');
       console.log('[CHECK-PIX] Utmify send result - Success:', utmifyResult.success);
       console.log('[CHECK-PIX] Utmify send result - Response:', JSON.stringify(utmifyResult.response, null, 2));
@@ -294,7 +298,8 @@ serve(async (req) => {
         isPaid: isPaid,
         paymentMethod: tx?.payment_method || data?.payment_method || 'pix',
         amount: tx?.amount || data?.amount,
-        utmifySent: isPaid && orderId ? true : false,
+        utmifySent: Boolean(utmifyResult?.success),
+        utmify: utmifyResult,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
